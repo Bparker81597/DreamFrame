@@ -1,4 +1,5 @@
 import { useEffect, useState, type CSSProperties, type MouseEvent } from 'react'
+import { AnimatePresence, motion } from 'framer-motion'
 import type { DreamUser, DreamUserUpdate } from './models/dreamUser'
 import { createStarterWorldUser } from './models/createStarterWorld'
 import { checkFirstUpgrade, getLevel, xpRewards } from './models/progression'
@@ -18,6 +19,7 @@ type Tab =
   | 'DreamFrame'
   | 'World'
   | 'CreatorStudio'
+  | 'FutureSelf'
   | 'Journal'
   | 'Me'
 
@@ -80,6 +82,7 @@ const tabSlugs: Record<Tab, string> = {
   DreamFrame: 'dreamframe',
   World: 'world',
   CreatorStudio: 'creator-studio',
+  FutureSelf: 'future-self',
   Journal: 'journal',
   Me: 'me',
 }
@@ -111,6 +114,7 @@ function App() {
   const [user, setUser] = useState<DreamUser>(loadDreamUser)
   const [journalDraft, setJournalDraft] = useState('')
   const [ritualPulse, setRitualPulse] = useState(false)
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false)
   const [activeTab, setActiveTab] = useState<Tab>(() =>
     getTabFromPath(window.location.pathname),
   )
@@ -137,7 +141,15 @@ function App() {
   }
 
   function updateUser(updater: DreamUserUpdate) {
-    setUser((currentUser) => checkFirstUpgrade(updater(currentUser)))
+    setUser((currentUser) => {
+      const nextUser = checkFirstUpgrade(updater(currentUser))
+
+      if (!currentUser.firstUpgradeUnlocked && nextUser.firstUpgradeUnlocked) {
+        setShowUpgradeModal(true)
+      }
+
+      return nextUser
+    })
     setRitualPulse(true)
     window.setTimeout(() => setRitualPulse(false), 900)
   }
@@ -286,43 +298,58 @@ function App() {
       </header>
 
       <main className="main-canvas">
-        {activeTab === 'Start' && (
-          <StartPage user={user} onCreateStarterWorld={createStarterWorld} />
-        )}
-        {activeTab === 'Home' && (
-          <HomePage user={user} />
-        )}
-        {activeTab === 'DreamFrame' && (
-          <DreamFramePage
-            user={user}
-            onSelectEra={selectEra}
-            onCompleteFocusSession={completeFocusSession}
-            onCreateFirstGoal={createFirstGoal}
-            onCompleteGoal={completeGoal}
-          />
-        )}
-        {activeTab === 'World' && (
-          <WorldPage user={user} onNavigate={navigate} />
-        )}
-        {activeTab === 'CreatorStudio' && (
-          <CreatorStudioPage
-            user={user}
-            onCompleteFocusSession={completeFocusSession}
-            onNavigate={navigate}
-          />
-        )}
-        {activeTab === 'Journal' && (
-          <JournalPage
-            user={user}
-            journalDraft={journalDraft}
-            onJournalDraftChange={setJournalDraft}
-            onCompleteReflection={completeReflection}
-            onNavigate={navigate}
-          />
-        )}
-        {activeTab === 'Me' && (
-          <MePage user={user} onCompleteHabit={completeHabit} onNavigate={navigate} />
-        )}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activeTab}
+            initial={{ opacity: 0, y: 16, filter: 'blur(8px)' }}
+            animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+            exit={{ opacity: 0, y: -10, filter: 'blur(8px)' }}
+            transition={{ duration: 0.42, ease: [0.22, 1, 0.36, 1] }}
+          >
+            {activeTab === 'Start' && (
+              <StartPage user={user} onCreateStarterWorld={createStarterWorld} />
+            )}
+            {activeTab === 'Home' && <HomePage user={user} />}
+            {activeTab === 'DreamFrame' && (
+              <DreamFramePage
+                user={user}
+                onSelectEra={selectEra}
+                onCompleteFocusSession={completeFocusSession}
+                onCreateFirstGoal={createFirstGoal}
+                onCompleteGoal={completeGoal}
+              />
+            )}
+            {activeTab === 'World' && (
+              <WorldPage user={user} onNavigate={navigate} />
+            )}
+            {activeTab === 'CreatorStudio' && (
+              <CreatorStudioPage
+                user={user}
+                onCompleteFocusSession={completeFocusSession}
+                onNavigate={navigate}
+              />
+            )}
+            {activeTab === 'FutureSelf' && (
+              <FutureSelfPage user={user} onNavigate={navigate} />
+            )}
+            {activeTab === 'Journal' && (
+              <JournalPage
+                user={user}
+                journalDraft={journalDraft}
+                onJournalDraftChange={setJournalDraft}
+                onCompleteReflection={completeReflection}
+                onNavigate={navigate}
+              />
+            )}
+            {activeTab === 'Me' && (
+              <MePage
+                user={user}
+                onCompleteHabit={completeHabit}
+                onNavigate={navigate}
+              />
+            )}
+          </motion.div>
+        </AnimatePresence>
       </main>
 
       <nav className="bottom-nav" aria-label="Primary navigation">
@@ -339,6 +366,10 @@ function App() {
           </a>
         ))}
       </nav>
+      <UpgradeModal
+        open={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+      />
     </div>
   )
 }
@@ -526,7 +557,8 @@ function WorldPage({
     {
       title: 'Future Self Observatory',
       icon: 'visibility',
-      status: 'Coming Soon',
+      status: 'Active',
+      tab: 'FutureSelf' as const,
     },
     {
       title: 'Dream Sanctuary',
@@ -555,16 +587,18 @@ function WorldPage({
       <section className="quick-access-grid" aria-label="World quick access">
         {quickAccessCards.map((card) =>
           card.tab ? (
-            <button
+            <motion.button
               className="quick-access-card active-location"
               key={card.title}
               onClick={() => onNavigate(card.tab)}
               type="button"
+              whileHover={{ y: -6, scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
             >
               <span className="material-symbols-outlined">{card.icon}</span>
               <strong>{card.title}</strong>
               <small>{card.status}</small>
-            </button>
+            </motion.button>
           ) : (
             <div className="quick-access-card coming-soon" key={card.title}>
               <span className="material-symbols-outlined">{card.icon}</span>
@@ -615,9 +649,24 @@ function CreatorStudioPage({
         </p>
       </div>
 
-      <div className="creator-studio-scene" aria-label="Creator Studio Level 1 visual">
+      <div
+        className={`creator-studio-scene level-${user.currentWorld.studioLevel}`}
+        aria-label="Creator Studio visual"
+      >
         <div className="mood-light left-light"></div>
         <div className="mood-light right-light"></div>
+        {user.firstUpgradeUnlocked && (
+          <motion.div
+            className="vision-board"
+            initial={{ opacity: 0, scale: 0.9, y: 12 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+          >
+            <span></span>
+            <span></span>
+            <span></span>
+          </motion.div>
+        )}
         <div className="wall-shelf">
           <span></span>
           <span></span>
@@ -628,6 +677,16 @@ function CreatorStudioPage({
             <div className="laptop-screen"></div>
             <div className="laptop-base"></div>
           </div>
+          {user.firstUpgradeUnlocked && (
+            <motion.div
+              className="second-monitor"
+              initial={{ opacity: 0, x: 24 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.6, delay: 0.12 }}
+            >
+              <div></div>
+            </motion.div>
+          )}
           <div className="plant-placeholder">
             <span></span>
           </div>
@@ -677,6 +736,58 @@ function CreatorStudioPage({
         </div>
         <p>Creator XP {user.creatorXP}</p>
       </section>
+
+      <button
+        className="secondary-button inline-action"
+        onClick={() => onNavigate('World')}
+        type="button"
+      >
+        <span className="material-symbols-outlined">public</span>
+        Back to World
+      </button>
+    </section>
+  )
+}
+
+function FutureSelfPage({
+  user,
+  onNavigate,
+}: {
+  user: DreamUser
+  onNavigate: (tab: Tab) => void
+}) {
+  return (
+    <section className="page-view detail-view">
+      <div className="intro-panel">
+        <p className="page-kicker">Future Self</p>
+        <h2>Future Self Observatory</h2>
+        <p>
+          A simple view of who you are now, who you are becoming, and what your
+          DreamFrame has already changed.
+        </p>
+      </div>
+
+      <div className="future-self-flow">
+        <motion.article className="future-panel" whileHover={{ y: -5 }}>
+          <span>Current Self</span>
+          <strong>{user.displayName}</strong>
+          <p>{user.currentEra}</p>
+        </motion.article>
+        <span className="flow-arrow">↓</span>
+        <motion.article className="future-panel highlighted" whileHover={{ y: -5 }}>
+          <span>Future Self Vision</span>
+          <strong>{user.futureSelfVision}</strong>
+        </motion.article>
+        <span className="flow-arrow">↓</span>
+        <motion.article className="future-panel" whileHover={{ y: -5 }}>
+          <span>Progress Summary</span>
+          <div className="progress-row">
+            <strong>Studio Level {user.currentWorld.studioLevel}</strong>
+            <strong>Creator Level {user.creatorLevel}</strong>
+            <strong>{user.creatorXP} XP</strong>
+          </div>
+        </motion.article>
+      </div>
 
       <button
         className="secondary-button inline-action"
@@ -755,20 +866,32 @@ function MePage({
     <section className="page-view detail-view">
       <div className="intro-panel">
         <p className="page-kicker">Me</p>
-        <h2>Your profile anchors the frame.</h2>
+        <h2>Profile</h2>
         <p>
-          Keep your selfie, goals, and active era connected to the rest of the
-          experience.
+          Your identity, era, future self vision, and world progress stay
+          connected to the core DreamFrame loop.
         </p>
       </div>
       <div className="profile-card">
-        <div className="large-avatar">
-          <span className="material-symbols-outlined">person</span>
+        <div className="large-avatar profile-photo">
+          {user.photoURL ? (
+            <img src={user.photoURL} alt={user.displayName} />
+          ) : (
+            <span className="material-symbols-outlined">person</span>
+          )}
         </div>
         <div>
-          <span>Active Era</span>
-          <strong>{user.currentEra}</strong>
+          <span>Name</span>
+          <strong>{user.displayName}</strong>
         </div>
+      </div>
+      <div className="profile-detail-grid">
+        <InfoPanel title="Current Era" body={user.currentEra} />
+        <InfoPanel title="Future Self Vision" body={user.futureSelfVision} />
+        <InfoPanel
+          title="World Progress"
+          body={`Studio Level ${user.currentWorld.studioLevel} / World Level ${user.worldLevel}`}
+        />
       </div>
       <div className="xp-grid">
         <InfoPanel title={`Creator Level ${getLevel(user.creatorXP)}`} body={`${user.creatorXP} XP`} />
@@ -789,6 +912,59 @@ function MePage({
         Back Home
       </button>
     </section>
+  )
+}
+
+function UpgradeModal({
+  open,
+  onClose,
+}: {
+  open: boolean
+  onClose: () => void
+}) {
+  return (
+    <AnimatePresence>
+      {open && (
+        <motion.div
+          className="upgrade-overlay"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.35 }}
+        >
+          <motion.div
+            className="upgrade-modal"
+            initial={{ opacity: 0, scale: 0.92, y: 24 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.94, y: 18 }}
+            transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="upgrade-title"
+          >
+            <motion.div
+              className="upgrade-orb"
+              initial={{ scale: 0.72, opacity: 0 }}
+              animate={{ scale: [0.72, 1.08, 1], opacity: 1 }}
+              transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
+            />
+            <p className="page-kicker">Upgrade Unlocked</p>
+            <h2 id="upgrade-title">✨ Studio Level 2 Unlocked</h2>
+            <p>Your world noticed.</p>
+            <p>Consistency creates momentum.</p>
+            <ul>
+              <li>brighter lighting</li>
+              <li>larger plant</li>
+              <li>vision board added</li>
+              <li>second monitor appears</li>
+            </ul>
+            <button className="glow-button compact-action center-action" onClick={onClose} type="button">
+              Continue
+            </button>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   )
 }
 
