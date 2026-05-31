@@ -18,6 +18,15 @@ export type JournalEntry = {
   createdAt: string
 }
 
+export type Goal = {
+  id: string
+  title: string
+  status: 'active' | 'completed'
+  xpReward: number
+  createdAt: string
+  completedAt?: string
+}
+
 export type DreamWorld = {
   worldType: string
   studioLevel: number
@@ -51,6 +60,7 @@ export type DreamUser = {
   firstReflectionComplete: boolean
   firstFocusSessionComplete: boolean
   firstGoalComplete: boolean
+  goals: Goal[]
   journalEntries: JournalEntry[]
   worldEvents: WorldEvent[]
   createdAt: string

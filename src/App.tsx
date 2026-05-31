@@ -1,7 +1,7 @@
 import { useEffect, useState, type CSSProperties, type MouseEvent } from 'react'
 import type { DreamUser, DreamUserUpdate } from './models/dreamUser'
 import { createStarterWorldUser } from './models/createStarterWorld'
-import { applyFirstUpgrade, getLevel, xpRewards } from './models/progression'
+import { checkFirstUpgrade, getLevel, xpRewards } from './models/progression'
 import { loadDreamUser, saveDreamUser } from './storage/dreamUserStorage'
 import './App.css'
 
@@ -137,7 +137,7 @@ function App() {
   }
 
   function updateUser(updater: DreamUserUpdate) {
-    setUser((currentUser) => applyFirstUpgrade(updater(currentUser)))
+    setUser((currentUser) => checkFirstUpgrade(updater(currentUser)))
     setRitualPulse(true)
     window.setTimeout(() => setRitualPulse(false), 900)
   }
@@ -190,9 +190,46 @@ function App() {
   function completeGoal() {
     updateUser((currentUser) => ({
       ...currentUser,
-      growthXP: currentUser.growthXP + xpRewards.complete_goal,
+      goals: currentUser.goals.map((goal) =>
+        goal.title === 'Work on DreamFrame'
+          ? {
+              ...goal,
+              status: 'completed',
+              completedAt: new Date().toISOString(),
+            }
+          : goal,
+      ),
+      growthXP: currentUser.firstGoalComplete
+        ? currentUser.growthXP
+        : currentUser.growthXP + xpRewards.complete_goal,
       firstGoalComplete: true,
     }))
+  }
+
+  function createFirstGoal() {
+    updateUser((currentUser) => {
+      const hasFirstGoal = currentUser.goals.some(
+        (goal) => goal.title === 'Work on DreamFrame',
+      )
+
+      if (hasFirstGoal) {
+        return currentUser
+      }
+
+      return {
+        ...currentUser,
+        goals: [
+          {
+            id: `goal_${Date.now()}`,
+            title: 'Work on DreamFrame',
+            status: 'active',
+            xpReward: xpRewards.complete_goal,
+            createdAt: new Date().toISOString(),
+          },
+          ...currentUser.goals,
+        ],
+      }
+    })
   }
 
   function completeHabit() {
@@ -260,6 +297,7 @@ function App() {
             user={user}
             onSelectEra={selectEra}
             onCompleteFocusSession={completeFocusSession}
+            onCreateFirstGoal={createFirstGoal}
             onCompleteGoal={completeGoal}
           />
         )}
@@ -374,13 +412,17 @@ function DreamFramePage({
   user,
   onSelectEra,
   onCompleteFocusSession,
+  onCreateFirstGoal,
   onCompleteGoal,
 }: {
   user: DreamUser
   onSelectEra: (title: string) => void
   onCompleteFocusSession: () => void
+  onCreateFirstGoal: () => void
   onCompleteGoal: () => void
 }) {
+  const firstGoal = user.goals.find((goal) => goal.title === 'Work on DreamFrame')
+
   return (
     <section className="page-view">
       <div className="intro-panel">
@@ -422,14 +464,32 @@ function DreamFramePage({
           <span className="material-symbols-outlined">timer</span>
           Complete Focus Session
         </button>
-        <button
-          className="secondary-button"
-          onClick={onCompleteGoal}
-          type="button"
-        >
-          <span className="material-symbols-outlined">target</span>
-          Complete First Goal
-        </button>
+        {!firstGoal && (
+          <button
+            className="secondary-button"
+            onClick={onCreateFirstGoal}
+            type="button"
+          >
+            <span className="material-symbols-outlined">target</span>
+            Create First Goal: Work on DreamFrame
+          </button>
+        )}
+        {firstGoal?.status === 'active' && (
+          <button
+            className="secondary-button"
+            onClick={onCompleteGoal}
+            type="button"
+          >
+            <span className="material-symbols-outlined">check_circle</span>
+            Complete Goal: Work on DreamFrame
+          </button>
+        )}
+        {firstGoal?.status === 'completed' && (
+          <div className="goal-complete-note">
+            <span className="material-symbols-outlined">check_circle</span>
+            Work on DreamFrame complete
+          </div>
+        )}
         <p>
           Creator XP {user.creatorXP} / Growth XP {user.growthXP}
         </p>

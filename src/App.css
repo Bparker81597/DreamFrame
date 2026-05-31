@@ -396,6 +396,20 @@
   letter-spacing: 0.05em;
 }
 
+.goal-complete-note {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 58px;
+  border: 1px solid rgba(36, 92, 88, 0.18);
+  border-radius: 999px;
+  padding: 14px 18px;
+  color: #245c58;
+  font-weight: 800;
+  background: rgba(137, 205, 194, 0.28);
+}
+
 .detail-view {
   display: grid;
   gap: 36px;

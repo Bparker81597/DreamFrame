@@ -37,6 +37,7 @@ export function createStarterWorldUser(input: CreateStarterUserInput): DreamUser
     firstReflectionComplete: false,
     firstFocusSessionComplete: false,
     firstGoalComplete: false,
+    goals: [],
     journalEntries: [],
     worldEvents: [],
     createdAt: now,

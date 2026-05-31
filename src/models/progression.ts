@@ -31,7 +31,7 @@ export function recalculateLevels(user: DreamUser): DreamUser {
   }
 }
 
-export function applyFirstUpgrade(user: DreamUser): DreamUser {
+export function checkFirstUpgrade(user: DreamUser): DreamUser {
   const readyForUpgrade =
     user.firstReflectionComplete &&
     user.firstFocusSessionComplete &&
@@ -69,3 +69,5 @@ export function applyFirstUpgrade(user: DreamUser): DreamUser {
 
   return recalculateLevels(upgradedUser)
 }
+
+export const applyFirstUpgrade = checkFirstUpgrade

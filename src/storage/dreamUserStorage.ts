@@ -21,6 +21,7 @@ export function loadDreamUser() {
         ...initialUser.currentWorld,
         ...parsedUser.currentWorld,
       },
+      goals: parsedUser.goals ?? initialUser.goals,
       journalEntries: parsedUser.journalEntries ?? initialUser.journalEntries,
       worldEvents: parsedUser.worldEvents ?? initialUser.worldEvents,
     } as DreamUser)
