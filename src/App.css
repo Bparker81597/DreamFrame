@@ -409,7 +409,7 @@
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
-.studio-preview,
+.world-preview-card,
 .quest-card {
   width: min(100%, 840px);
   margin: 0 auto;
@@ -423,7 +423,7 @@
   backdrop-filter: blur(18px);
 }
 
-.studio-preview {
+.world-preview-card {
   display: flex;
   align-items: end;
   justify-content: space-between;
@@ -433,7 +433,7 @@
   position: relative;
 }
 
-.studio-preview::before {
+.world-preview-card::before {
   position: absolute;
   right: 38px;
   top: 30px;
@@ -448,12 +448,12 @@
   opacity: 0.5;
 }
 
-.studio-preview.level-2::before {
+.world-preview-card.level-2::before {
   opacity: 1;
   box-shadow: 0 0 34px rgba(251, 191, 36, 0.28);
 }
 
-.studio-preview span,
+.world-preview-card span,
 .quest-card span:first-child {
   color: rgba(73, 68, 84, 0.68);
   font-size: 0.82rem;
@@ -462,7 +462,7 @@
   text-transform: uppercase;
 }
 
-.studio-preview strong,
+.world-preview-card strong,
 .quest-card strong {
   display: block;
   margin-top: 4px;
@@ -472,32 +472,226 @@
   font-weight: 500;
 }
 
-.studio-preview p {
+.world-preview-card p {
   margin: 8px 0 0;
   color: #494454;
   text-transform: capitalize;
 }
 
-.reward-shelf {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
+.quick-access-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.quick-access-card {
+  display: grid;
   gap: 10px;
+  min-height: 170px;
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  border-radius: 28px;
+  padding: 22px;
+  color: #494454;
+  text-align: left;
+  background: rgba(255, 255, 255, 0.48);
+  box-shadow: 0 18px 40px rgba(107, 56, 212, 0.1);
+  backdrop-filter: blur(18px);
 }
 
-.reward-shelf span {
+.quick-access-card.active-location {
+  cursor: pointer;
+  transition:
+    background 250ms ease,
+    transform 250ms ease;
+}
+
+.quick-access-card.active-location:hover {
+  background: rgba(255, 255, 255, 0.72);
+  transform: translateY(-5px);
+}
+
+.quick-access-card.coming-soon {
+  opacity: 0.64;
+}
+
+.quick-access-card .material-symbols-outlined {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
   border-radius: 999px;
-  padding: 10px 13px;
-  color: rgba(73, 68, 84, 0.46);
-  background: rgba(255, 255, 255, 0.52);
+  color: #fff;
+  background: #6b38d4;
 }
 
-.reward-shelf span.unlocked {
-  color: #23005c;
-  background: rgba(255, 218, 220, 0.9);
-  box-shadow: 0 10px 24px rgba(254, 116, 136, 0.18);
+.quick-access-card.coming-soon .material-symbols-outlined {
+  background: rgba(73, 68, 84, 0.44);
+}
+
+.quick-access-card strong {
+  color: #6b38d4;
+  font-family: 'EB Garamond', Georgia, serif;
+  font-size: 1.35rem;
+  font-weight: 500;
+  line-height: 1.1;
+}
+
+.quick-access-card small {
+  align-self: end;
+  color: rgba(73, 68, 84, 0.68);
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.creator-studio-scene {
+  position: relative;
+  width: min(100%, 920px);
+  min-height: 420px;
+  margin: 0 auto;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.58);
+  border-radius: 32px;
+  background:
+    linear-gradient(180deg, rgba(255, 247, 237, 0.78), rgba(233, 221, 255, 0.5)),
+    linear-gradient(90deg, rgba(107, 56, 212, 0.08) 1px, transparent 1px),
+    linear-gradient(0deg, rgba(107, 56, 212, 0.08) 1px, transparent 1px);
+  background-size: auto, 46px 46px, 46px 46px;
+  box-shadow: 0 24px 54px rgba(107, 56, 212, 0.13);
+  backdrop-filter: blur(18px);
+}
+
+.mood-light {
+  position: absolute;
+  top: 36px;
+  width: 180px;
+  height: 180px;
+  border-radius: 999px;
+  filter: blur(34px);
+  opacity: 0.42;
+}
+
+.left-light {
+  left: 44px;
+  background: #8455ef;
+}
+
+.right-light {
+  right: 72px;
+  background: #fe7488;
+}
+
+.wall-shelf {
+  position: absolute;
+  top: 84px;
+  right: 86px;
+  display: flex;
+  gap: 14px;
+  width: 270px;
+  height: 76px;
+  border-bottom: 12px solid rgba(73, 68, 84, 0.3);
+}
+
+.wall-shelf span {
+  width: 58px;
+  height: 46px;
+  border: 1px dashed rgba(73, 68, 84, 0.32);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.28);
+}
+
+.desk {
+  position: absolute;
+  right: 70px;
+  bottom: 72px;
+  left: 70px;
+  height: 118px;
+  border-radius: 28px 28px 14px 14px;
+  background: linear-gradient(135deg, rgba(73, 68, 84, 0.76), rgba(35, 0, 92, 0.8));
+  box-shadow: 0 30px 50px rgba(35, 0, 92, 0.18);
+}
+
+.desk::after {
+  position: absolute;
+  right: 48px;
+  bottom: -54px;
+  left: 48px;
+  height: 54px;
+  border-radius: 0 0 18px 18px;
+  background: rgba(73, 68, 84, 0.34);
+  content: '';
+}
+
+.laptop {
+  position: absolute;
+  left: 34%;
+  bottom: 78px;
+  width: 210px;
+}
+
+.laptop-screen {
+  height: 126px;
+  border: 8px solid rgba(28, 28, 25, 0.82);
+  border-radius: 16px 16px 8px 8px;
+  background:
+    linear-gradient(135deg, rgba(132, 85, 239, 0.82), rgba(254, 116, 136, 0.55)),
+    rgba(255, 255, 255, 0.65);
+  box-shadow: 0 0 34px rgba(132, 85, 239, 0.24);
+}
+
+.laptop-base {
+  height: 18px;
+  margin: 0 -26px;
+  border-radius: 0 0 18px 18px;
+  background: rgba(28, 28, 25, 0.72);
+}
+
+.plant-placeholder {
+  position: absolute;
+  right: 96px;
+  bottom: 92px;
+  display: grid;
+  place-items: end center;
+  width: 72px;
+  height: 108px;
+}
+
+.plant-placeholder::before {
+  width: 42px;
+  height: 34px;
+  border-radius: 8px 8px 18px 18px;
+  background: rgba(255, 218, 220, 0.94);
+  content: '';
+}
+
+.plant-placeholder span {
+  position: absolute;
+  bottom: 30px;
+  width: 16px;
+  height: 60px;
+  border-radius: 999px;
+  background: rgba(36, 92, 88, 0.46);
+}
+
+.plant-placeholder span::before,
+.plant-placeholder span::after {
+  position: absolute;
+  top: 10px;
+  width: 34px;
+  height: 22px;
+  border-radius: 999px 999px 999px 0;
+  background: rgba(36, 92, 88, 0.62);
+  content: '';
+}
+
+.plant-placeholder span::before {
+  right: 7px;
+  transform: rotate(-28deg);
+}
+
+.plant-placeholder span::after {
+  left: 7px;
+  transform: rotate(28deg) scaleX(-1);
 }
 
 .quest-card {
@@ -669,6 +863,7 @@
   }
 
   .detail-grid,
+  .quick-access-grid,
   .xp-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -704,21 +899,45 @@
   }
 
   .detail-grid,
+  .quick-access-grid,
   .xp-grid,
   .quest-card {
     grid-template-columns: 1fr;
   }
 
-  .studio-preview {
+  .world-preview-card {
     align-items: start;
     flex-direction: column;
   }
 
-  .studio-preview::before {
+  .world-preview-card::before {
     right: 20px;
     top: 22px;
     width: 110px;
     height: 84px;
+  }
+
+  .creator-studio-scene {
+    min-height: 360px;
+  }
+
+  .wall-shelf {
+    right: 28px;
+    width: 190px;
+  }
+
+  .desk {
+    right: 24px;
+    left: 24px;
+  }
+
+  .laptop {
+    left: 18%;
+    width: 172px;
+  }
+
+  .plant-placeholder {
+    right: 48px;
   }
 
   .glass-card {

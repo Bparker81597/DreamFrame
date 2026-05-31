@@ -12,7 +12,14 @@ type Era = {
   alt: string
 }
 
-type Tab = 'Start' | 'Home' | 'DreamFrame' | 'World' | 'Journal' | 'Me'
+type Tab =
+  | 'Start'
+  | 'Home'
+  | 'DreamFrame'
+  | 'World'
+  | 'CreatorStudio'
+  | 'Journal'
+  | 'Me'
 
 const eras: Era[] = [
   {
@@ -72,6 +79,7 @@ const tabSlugs: Record<Tab, string> = {
   Home: 'home',
   DreamFrame: 'dreamframe',
   World: 'world',
+  CreatorStudio: 'creator-studio',
   Journal: 'journal',
   Me: 'me',
 }
@@ -229,6 +237,13 @@ function App() {
         )}
         {activeTab === 'World' && (
           <WorldPage user={user} onNavigate={navigate} />
+        )}
+        {activeTab === 'CreatorStudio' && (
+          <CreatorStudioPage
+            user={user}
+            onCompleteFocusSession={completeFocusSession}
+            onNavigate={navigate}
+          />
         )}
         {activeTab === 'Journal' && (
           <JournalPage
@@ -402,6 +417,36 @@ function WorldPage({
   user: DreamUser
   onNavigate: (tab: Tab) => void
 }) {
+  const quickAccessCards = [
+    {
+      title: 'Creator Studio',
+      icon: 'computer',
+      status: 'Active',
+      tab: 'CreatorStudio' as const,
+    },
+    {
+      title: 'Growth Garden',
+      icon: 'local_florist',
+      status: 'Coming Soon',
+    },
+    {
+      title: 'Journal Corner',
+      icon: 'auto_stories',
+      status: 'Active',
+      tab: 'Journal' as const,
+    },
+    {
+      title: 'Future Self Observatory',
+      icon: 'visibility',
+      status: 'Coming Soon',
+    },
+    {
+      title: 'Dream Sanctuary',
+      icon: 'night_shelter',
+      status: 'Coming Soon',
+    },
+  ]
+
   return (
     <section className="page-view detail-view">
       <div className="intro-panel">
@@ -412,30 +457,35 @@ function WorldPage({
           here. Real actions now update this world state.
         </p>
       </div>
-      <div className={`studio-preview level-${user.currentWorld.studioLevel}`}>
+      <div className={`world-preview-card level-${user.currentWorld.studioLevel}`}>
         <div>
-          <span>Creator Studio</span>
-          <strong>Level {user.currentWorld.studioLevel}</strong>
-          <p>{user.currentWorld.visualState.replaceAll('_', ' ')}</p>
-        </div>
-        <div className="reward-shelf" aria-label="Unlocked visual rewards">
-          <span className={user.firstUpgradeUnlocked ? 'unlocked' : ''}>Plant</span>
-          <span className={user.firstUpgradeUnlocked ? 'unlocked' : ''}>Lighting</span>
-          <span className={user.firstUpgradeUnlocked ? 'unlocked' : ''}>Vision Board</span>
+          <span>Main World</span>
+          <strong>Creator Studio Level {user.currentWorld.studioLevel}</strong>
+          <p>Status: Growing</p>
         </div>
       </div>
-      <FirstQuestChecklist user={user} />
-      <div className="detail-grid">
-        <InfoPanel title="World Type" body={user.currentWorld.worldType} />
-        <InfoPanel
-          title="Upgrade Rule"
-          body="Finish one reflection, one focus session, and one goal."
-        />
-        <InfoPanel
-          title="Latest Event"
-          body={user.worldEvents[0]?.message ?? 'No world events yet.'}
-        />
-      </div>
+      <section className="quick-access-grid" aria-label="World quick access">
+        {quickAccessCards.map((card) =>
+          card.tab ? (
+            <button
+              className="quick-access-card active-location"
+              key={card.title}
+              onClick={() => onNavigate(card.tab)}
+              type="button"
+            >
+              <span className="material-symbols-outlined">{card.icon}</span>
+              <strong>{card.title}</strong>
+              <small>{card.status}</small>
+            </button>
+          ) : (
+            <div className="quick-access-card coming-soon" key={card.title}>
+              <span className="material-symbols-outlined">{card.icon}</span>
+              <strong>{card.title}</strong>
+              <small>{card.status}</small>
+            </div>
+          ),
+        )}
+      </section>
       <button
         className="secondary-button inline-action"
         onClick={() => onNavigate('Home')}
@@ -443,6 +493,71 @@ function WorldPage({
       >
         <span className="material-symbols-outlined">home</span>
         Back Home
+      </button>
+    </section>
+  )
+}
+
+function CreatorStudioPage({
+  user,
+  onCompleteFocusSession,
+  onNavigate,
+}: {
+  user: DreamUser
+  onCompleteFocusSession: () => void
+  onNavigate: (tab: Tab) => void
+}) {
+  return (
+    <section className="page-view detail-view">
+      <div className="intro-panel">
+        <p className="page-kicker">Creator Studio</p>
+        <h2>Creator Studio Level {user.currentWorld.studioLevel}</h2>
+        <p>
+          Your starter studio is quiet and ready: a creator desk, laptop, mood
+          lighting, an empty shelf, and a small plant placeholder.
+        </p>
+      </div>
+
+      <div className="creator-studio-scene" aria-label="Creator Studio Level 1 visual">
+        <div className="mood-light left-light"></div>
+        <div className="mood-light right-light"></div>
+        <div className="wall-shelf">
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+        <div className="desk">
+          <div className="laptop">
+            <div className="laptop-screen"></div>
+            <div className="laptop-base"></div>
+          </div>
+          <div className="plant-placeholder">
+            <span></span>
+          </div>
+        </div>
+      </div>
+
+      <FirstQuestChecklist user={user} />
+
+      <section className="action-panel" aria-label="Creator Studio actions">
+        <button
+          className="glow-button"
+          onClick={onCompleteFocusSession}
+          type="button"
+        >
+          <span className="material-symbols-outlined">timer</span>
+          Complete Focus Session
+        </button>
+        <p>Creator XP {user.creatorXP}</p>
+      </section>
+
+      <button
+        className="secondary-button inline-action"
+        onClick={() => onNavigate('World')}
+        type="button"
+      >
+        <span className="material-symbols-outlined">public</span>
+        Back to World
       </button>
     </section>
   )
