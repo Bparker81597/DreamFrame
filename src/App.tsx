@@ -1,5 +1,6 @@
 import { useEffect, useState, type CSSProperties, type MouseEvent } from 'react'
 import type { DreamUser, DreamUserUpdate } from './models/dreamUser'
+import { createStarterWorldUser } from './models/createStarterWorld'
 import { applyFirstUpgrade, getLevel, xpRewards } from './models/progression'
 import { loadDreamUser, saveDreamUser } from './storage/dreamUserStorage'
 import './App.css'
@@ -11,7 +12,7 @@ type Era = {
   alt: string
 }
 
-type Tab = 'Home' | 'DreamFrame' | 'World' | 'Journal' | 'Me'
+type Tab = 'Start' | 'Home' | 'DreamFrame' | 'World' | 'Journal' | 'Me'
 
 const eras: Era[] = [
   {
@@ -74,6 +75,7 @@ const hubCards: Array<[Tab, string, string, string]> = [
 ]
 
 const tabSlugs: Record<Tab, string> = {
+  Start: 'start',
   Home: 'home',
   DreamFrame: 'dreamframe',
   World: 'world',
@@ -96,7 +98,7 @@ function getTabFromPath(pathname: string): Tab {
   const trimmedPath = pathname.replace(/\/$/, '')
 
   if (trimmedPath === fallbackPath) {
-    return 'Home'
+    return 'Start'
   }
 
   const slug = trimmedPath.replace(`${fallbackPath}/`, '').split('/')[0]
@@ -178,6 +180,23 @@ function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
+  function createStarterWorld() {
+    const starterUser = createStarterWorldUser({
+      uid: user.uid,
+      displayName: user.displayName,
+      email: user.email,
+      photoURL: user.photoURL,
+      currentEra: 'Creator Era',
+      futureSelfVision: user.futureSelfVision,
+    })
+
+    saveDreamUser(starterUser)
+    setUser(starterUser)
+    setRitualPulse(true)
+    window.setTimeout(() => setRitualPulse(false), 900)
+    navigate('Home')
+  }
+
   return (
     <div className={`dreamframe-shell ${ritualPulse ? 'ritual-pulse' : ''}`}>
       <header className="top-nav">
@@ -201,6 +220,9 @@ function App() {
       </header>
 
       <main className="main-canvas">
+        {activeTab === 'Start' && (
+          <StartPage user={user} onCreateStarterWorld={createStarterWorld} />
+        )}
         {activeTab === 'Home' && (
           <HomePage user={user} onNavigate={navigate} />
         )}
@@ -244,6 +266,36 @@ function App() {
         ))}
       </nav>
     </div>
+  )
+}
+
+function StartPage({
+  user,
+  onCreateStarterWorld,
+}: {
+  user: DreamUser
+  onCreateStarterWorld: () => void
+}) {
+  return (
+    <section className="page-view start-view">
+      <div className="intro-panel">
+        <p className="page-kicker">Starter World</p>
+        <h2>Create Creator Studio Level 1.</h2>
+        <p>
+          This generates the first user document, saves the starter world state,
+          and redirects into the Home hub.
+        </p>
+      </div>
+      <div className="starter-card">
+        <span>users/{user.uid}</span>
+        <strong>Creator Studio Level 1</strong>
+        <p>starter_studio / Creator Era / 0 XP</p>
+        <button className="glow-button" onClick={onCreateStarterWorld} type="button">
+          <span className="material-symbols-outlined">auto_fix_high</span>
+          Generate Starter World
+        </button>
+      </div>
+    </section>
   )
 }
 

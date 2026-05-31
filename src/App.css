@@ -175,7 +175,8 @@
 .hub-card,
 .info-panel,
 .journal-card,
-.profile-card {
+.profile-card,
+.starter-card {
   border: 1px solid rgba(255, 255, 255, 0.55);
   border-radius: 28px;
   background: rgba(255, 255, 255, 0.48);
@@ -228,6 +229,35 @@
 .info-panel p {
   color: #494454;
   line-height: 1.55;
+}
+
+.starter-card {
+  display: grid;
+  gap: 14px;
+  width: min(100%, 560px);
+  margin: 0 auto;
+  padding: 30px;
+  text-align: center;
+}
+
+.starter-card > span {
+  color: rgba(73, 68, 84, 0.68);
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.starter-card strong {
+  color: #6b38d4;
+  font-family: 'EB Garamond', Georgia, serif;
+  font-size: 2.1rem;
+  font-weight: 500;
+}
+
+.starter-card p {
+  margin: 0 0 10px;
+  color: #494454;
 }
 
 .era-grid {

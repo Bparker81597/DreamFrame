@@ -73,6 +73,15 @@ export type DreamUserAction =
 
 export type DreamUserUpdate = (currentUser: DreamUser) => DreamUser
 
+export type CreateStarterUserInput = {
+  uid: string
+  displayName: string
+  email?: string
+  photoURL?: string
+  currentEra?: string
+  futureSelfVision?: string
+}
+
 export function toUserProfile(user: DreamUser): UserProfile {
   return {
     uid: user.uid,

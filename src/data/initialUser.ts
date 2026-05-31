@@ -7,7 +7,7 @@ export const initialUser: DreamUser = {
   displayName: 'Brittany',
   email: 'prototype@dreamframe.local',
   photoURL: '',
-  onboardingComplete: true,
+  onboardingComplete: false,
   currentEra: 'Creator Era',
   creatorType: 'app_builder',
   futureSelfVision:

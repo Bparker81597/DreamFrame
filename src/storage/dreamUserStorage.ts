@@ -30,3 +30,7 @@ export function loadDreamUser() {
 export function saveDreamUser(user: DreamUser) {
   window.localStorage.setItem(dreamUserStorageKey, JSON.stringify(user))
 }
+
+export function clearDreamUser() {
+  window.localStorage.removeItem(dreamUserStorageKey)
+}
