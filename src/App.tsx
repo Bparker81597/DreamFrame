@@ -67,13 +67,6 @@ const navItems: Array<[string, Tab]> = [
   ['person', 'Me'],
 ]
 
-const hubCards: Array<[Tab, string, string, string]> = [
-  ['DreamFrame', 'filter_frames', 'Choose Era', 'Pick the energy for your next chapter.'],
-  ['World', 'public', 'Build World', 'See the environment forming around your choice.'],
-  ['Journal', 'auto_stories', 'Write Ritual', 'Capture thoughts, prompts, and reflections.'],
-  ['Me', 'person', 'Profile', 'Keep your identity, goals, and progress close.'],
-]
-
 const tabSlugs: Record<Tab, string> = {
   Start: 'start',
   Home: 'home',
@@ -224,7 +217,7 @@ function App() {
           <StartPage user={user} onCreateStarterWorld={createStarterWorld} />
         )}
         {activeTab === 'Home' && (
-          <HomePage user={user} onNavigate={navigate} />
+          <HomePage user={user} />
         )}
         {activeTab === 'DreamFrame' && (
           <DreamFramePage
@@ -301,49 +294,34 @@ function StartPage({
 
 function HomePage({
   user,
-  onNavigate,
 }: {
   user: DreamUser
-  onNavigate: (tab: Tab) => void
 }) {
-  const completedFirstQuests = [
-    user.firstReflectionComplete,
-    user.firstFocusSessionComplete,
-    user.firstGoalComplete,
-  ].filter(Boolean).length
+  const hour = new Date().getHours()
+  const greeting =
+    hour < 12 ? 'Good Morning' : hour < 18 ? 'Good Afternoon' : 'Good Evening'
 
   return (
     <section className="page-view home-view">
-      <div className="intro-panel">
+      <section className="home-greeting" aria-label="Home summary">
         <p className="page-kicker">Home</p>
-        <h2>Your DreamFrame hub</h2>
-        <p>
-          Start from one place, then move into the frame, world, journal, or
-          profile without losing the era you chose.
-        </p>
-      </div>
-      <div className="home-summary">
-        <span>Current Era</span>
-        <strong>{user.currentEra}</strong>
-        <small>
-          Studio Level {user.currentWorld.studioLevel} / First quest{' '}
-          {completedFirstQuests} of 3
-        </small>
-      </div>
-      <section className="hub-grid" aria-label="DreamFrame sections">
-        {hubCards.map(([tab, icon, title, body], index) => (
-          <button
-            className="hub-card"
-            key={tab}
-            onClick={() => onNavigate(tab)}
-            style={{ '--delay': `${index * 80}ms` } as CSSProperties}
-            type="button"
-          >
-            <span className="material-symbols-outlined">{icon}</span>
-            <strong>{title}</strong>
-            <span>{body}</span>
-          </button>
-        ))}
+        <h2>
+          {greeting}, {user.displayName}.
+        </h2>
+        <div className="home-stats">
+          <div>
+            <span>Current Era</span>
+            <strong>{user.currentEra}</strong>
+          </div>
+          <div>
+            <span>Creator Level</span>
+            <strong>{user.creatorLevel}</strong>
+          </div>
+          <div>
+            <span>World Level</span>
+            <strong>{user.worldLevel}</strong>
+          </div>
+        </div>
       </section>
     </section>
   )
