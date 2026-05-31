@@ -10,6 +10,25 @@ export type WorldEvent = {
   createdAt: string
 }
 
+export type CompanionMessage = {
+  id: string
+  type: 'encouragement' | 'upgrade' | 'reflection' | 'garden_growth' | 'future_self'
+  location: string
+  message: string
+  createdAt: string
+  read: boolean
+}
+
+export type HabitLog = {
+  id: string
+  habitType: 'hydration' | 'reading' | 'fitness' | 'meditation' | 'coding' | 'sleep'
+  category: 'wellness' | 'creator' | 'growth'
+  completed: true
+  xpReward: number
+  gardenEffect: string
+  loggedAt: string
+}
+
 export type JournalEntry = {
   id: string
   prompt: string
@@ -61,7 +80,9 @@ export type DreamUser = {
   firstFocusSessionComplete: boolean
   firstGoalComplete: boolean
   goals: Goal[]
+  habitLogs: HabitLog[]
   journalEntries: JournalEntry[]
+  companionMessages: CompanionMessage[]
   worldEvents: WorldEvent[]
   createdAt: string
   updatedAt: string
@@ -77,11 +98,16 @@ export interface UserProfile {
   worldLevel: number
   creatorLevel: number
   creatorXP: number
+  gardenLevel: number
+  wellnessXP: number
+  reflectionXP: number
+  growthXP: number
   firstReflectionComplete: boolean
   firstFocusSessionComplete: boolean
   firstGoalComplete: boolean
   firstUpgradeUnlocked: boolean
   studioLevel: number
+  companionMessages?: CompanionMessage[]
 }
 
 export type DreamUserAction =
@@ -111,10 +137,15 @@ export function toUserProfile(user: DreamUser): UserProfile {
     worldLevel: user.worldLevel,
     creatorLevel: user.creatorLevel,
     creatorXP: user.creatorXP,
+    gardenLevel: user.currentWorld.gardenLevel,
+    wellnessXP: user.wellnessXP,
+    reflectionXP: user.reflectionXP,
+    growthXP: user.growthXP,
     firstReflectionComplete: user.firstReflectionComplete,
     firstFocusSessionComplete: user.firstFocusSessionComplete,
     firstGoalComplete: user.firstGoalComplete,
     firstUpgradeUnlocked: user.firstUpgradeUnlocked,
     studioLevel: user.currentWorld.studioLevel,
+    companionMessages: user.companionMessages,
   }
 }

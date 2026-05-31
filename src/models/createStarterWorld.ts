@@ -28,7 +28,7 @@ export function createStarterWorldUser(input: CreateStarterUserInput): DreamUser
     currentWorld: {
       worldType: 'creator_studio',
       studioLevel: 1,
-      gardenLevel: 0,
+      gardenLevel: 1,
       sanctuaryLevel: 0,
       observatoryLevel: 0,
       visualState: 'starter_studio',
@@ -38,7 +38,18 @@ export function createStarterWorldUser(input: CreateStarterUserInput): DreamUser
     firstFocusSessionComplete: false,
     firstGoalComplete: false,
     goals: [],
+    habitLogs: [],
     journalEntries: [],
+    companionMessages: [
+      {
+        id: `msg_${Date.now()}`,
+        type: 'encouragement',
+        location: 'home',
+        message: 'Your world noticed.',
+        createdAt: now,
+        read: false,
+      },
+    ],
     worldEvents: [],
     createdAt: now,
     updatedAt: now,

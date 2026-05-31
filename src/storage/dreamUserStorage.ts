@@ -22,7 +22,10 @@ export function loadDreamUser() {
         ...parsedUser.currentWorld,
       },
       goals: parsedUser.goals ?? initialUser.goals,
+      habitLogs: parsedUser.habitLogs ?? initialUser.habitLogs,
       journalEntries: parsedUser.journalEntries ?? initialUser.journalEntries,
+      companionMessages:
+        parsedUser.companionMessages ?? initialUser.companionMessages,
       worldEvents: parsedUser.worldEvents ?? initialUser.worldEvents,
     } as DreamUser)
   } catch {

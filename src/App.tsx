@@ -1,6 +1,16 @@
 import { useEffect, useState, type CSSProperties, type MouseEvent } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import type { DreamUser, DreamUserUpdate } from './models/dreamUser'
+import {
+  CompanionMessageCard,
+  EraBadge,
+  GrowthHabitCard,
+  ProgressTimeline,
+  WorldLocationCard,
+  XPBar,
+} from './components/Phase2Cards'
+import { activeEra, eras as eraConfigs } from './lib/eras'
+import { completeHabit as evolveHabit } from './lib/worldEvolution'
+import type { DreamUser, DreamUserUpdate, HabitLog } from './models/dreamUser'
 import { createStarterWorldUser } from './models/createStarterWorld'
 import { checkFirstUpgrade, getLevel, xpRewards } from './models/progression'
 import { loadDreamUser, saveDreamUser } from './storage/dreamUserStorage'
@@ -19,7 +29,9 @@ type Tab =
   | 'DreamFrame'
   | 'World'
   | 'CreatorStudio'
+  | 'GrowthGarden'
   | 'FutureSelf'
+  | 'Companion'
   | 'Journal'
   | 'Me'
 
@@ -72,6 +84,7 @@ const navItems: Array<[string, Tab]> = [
   ['home', 'Home'],
   ['filter_frames', 'DreamFrame'],
   ['public', 'World'],
+  ['favorite', 'Companion'],
   ['auto_stories', 'Journal'],
   ['person', 'Me'],
 ]
@@ -82,7 +95,9 @@ const tabSlugs: Record<Tab, string> = {
   DreamFrame: 'dreamframe',
   World: 'world',
   CreatorStudio: 'creator-studio',
+  GrowthGarden: 'growth-garden',
   FutureSelf: 'future-self',
+  Companion: 'companion',
   Journal: 'journal',
   Me: 'me',
 }
@@ -251,6 +266,10 @@ function App() {
     }))
   }
 
+  function completeGardenHabit(habitType: HabitLog['habitType']) {
+    updateUser((currentUser) => evolveHabit(currentUser, habitType))
+  }
+
   function navigate(tab: Tab, event?: MouseEvent<HTMLAnchorElement>) {
     event?.preventDefault()
     setActiveTab(tab)
@@ -329,8 +348,18 @@ function App() {
                 onNavigate={navigate}
               />
             )}
+            {activeTab === 'GrowthGarden' && (
+              <GrowthGardenPage
+                user={user}
+                onCompleteHabit={completeGardenHabit}
+                onNavigate={navigate}
+              />
+            )}
             {activeTab === 'FutureSelf' && (
               <FutureSelfPage user={user} onNavigate={navigate} />
+            )}
+            {activeTab === 'Companion' && (
+              <CompanionPage user={user} onNavigate={navigate} />
             )}
             {activeTab === 'Journal' && (
               <JournalPage
@@ -420,6 +449,11 @@ function HomePage({
         <h2>
           {greeting}, {user.displayName}.
         </h2>
+        {user.companionMessages[0] && (
+          <div className="home-companion">
+            <CompanionMessageCard message={user.companionMessages[0]} />
+          </div>
+        )}
         <div className="home-stats">
           <div>
             <span>Current Era</span>
@@ -546,7 +580,8 @@ function WorldPage({
     {
       title: 'Growth Garden',
       icon: 'local_florist',
-      status: 'Coming Soon',
+      status: 'Active',
+      tab: 'GrowthGarden' as const,
     },
     {
       title: 'Journal Corner',
@@ -568,14 +603,23 @@ function WorldPage({
   ]
 
   return (
-    <section className="page-view detail-view">
+    <section className="page-view detail-view world-map-page">
       <div className="intro-panel">
         <p className="page-kicker">World</p>
-        <h2>Your world is taking shape.</h2>
+        <h2>Enter your DreamFrame world.</h2>
         <p>
-          The environment, mood, and visual rules for {user.currentEra} live
-          here. Real actions now update this world state.
+          This is your personal world map. Each real action brings more light,
+          color, and life into the places you are building.
         </p>
+      </div>
+      <div className="era-row">
+        <EraBadge name={activeEra.name} status={activeEra.status} />
+        {eraConfigs
+          .filter((era) => era.id !== activeEra.id)
+          .slice(0, 3)
+          .map((era) => (
+            <EraBadge key={era.id} name={era.name} status={era.status} />
+          ))}
       </div>
       <div className={`world-preview-card level-${user.currentWorld.studioLevel}`}>
         <div>
@@ -584,27 +628,26 @@ function WorldPage({
           <p>Status: Growing</p>
         </div>
       </div>
-      <section className="quick-access-grid" aria-label="World quick access">
+      {user.companionMessages[0] && (
+        <CompanionMessageCard message={user.companionMessages[0]} />
+      )}
+      <section className="world-map-grid" aria-label="Interactive world map">
         {quickAccessCards.map((card) =>
           card.tab ? (
-            <motion.button
-              className="quick-access-card active-location"
+            <WorldLocationCard
               key={card.title}
+              title={card.title}
+              icon={card.icon}
+              status={card.status}
               onClick={() => onNavigate(card.tab)}
-              type="button"
-              whileHover={{ y: -6, scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-            >
-              <span className="material-symbols-outlined">{card.icon}</span>
-              <strong>{card.title}</strong>
-              <small>{card.status}</small>
-            </motion.button>
+            />
           ) : (
-            <div className="quick-access-card coming-soon" key={card.title}>
-              <span className="material-symbols-outlined">{card.icon}</span>
-              <strong>{card.title}</strong>
-              <small>{card.status}</small>
-            </div>
+            <WorldLocationCard
+              key={card.title}
+              title={card.title}
+              icon={card.icon}
+              status={card.status}
+            />
           ),
         )}
       </section>
@@ -767,6 +810,28 @@ function FutureSelfPage({
         </p>
       </div>
 
+      <div className="future-observatory-grid">
+        <div className="profile-card cinematic-self-card">
+          <div className="large-avatar profile-photo">
+            {user.photoURL ? (
+              <img src={user.photoURL} alt={user.displayName} />
+            ) : (
+              <span className="material-symbols-outlined">person</span>
+            )}
+          </div>
+          <div>
+            <span>Current Era</span>
+            <strong>{user.currentEra}</strong>
+          </div>
+        </div>
+        <div className="xp-grid observatory-xp">
+          <XPBar label="Creator" value={user.creatorXP} />
+          <XPBar label="Wellness" value={user.wellnessXP} />
+          <XPBar label="Reflection" value={user.reflectionXP} />
+          <XPBar label="Growth" value={user.growthXP} />
+        </div>
+      </div>
+
       <div className="future-self-flow">
         <motion.article className="future-panel" whileHover={{ y: -5 }}>
           <span>Current Self</span>
@@ -783,12 +848,151 @@ function FutureSelfPage({
           <span>Progress Summary</span>
           <div className="progress-row">
             <strong>Studio Level {user.currentWorld.studioLevel}</strong>
+            <strong>Garden Level {user.currentWorld.gardenLevel}</strong>
             <strong>Creator Level {user.creatorLevel}</strong>
             <strong>{user.creatorXP} XP</strong>
           </div>
         </motion.article>
       </div>
 
+      <ProgressTimeline currentLevel={user.worldLevel} />
+
+      <button
+        className="secondary-button inline-action"
+        onClick={() => onNavigate('World')}
+        type="button"
+      >
+        <span className="material-symbols-outlined">public</span>
+        Back to World
+      </button>
+    </section>
+  )
+}
+
+function GrowthGardenPage({
+  user,
+  onCompleteHabit,
+  onNavigate,
+}: {
+  user: DreamUser
+  onCompleteHabit: (habitType: HabitLog['habitType']) => void
+  onNavigate: (tab: Tab) => void
+}) {
+  const habits: Array<{
+    type: HabitLog['habitType']
+    title: string
+    effect: string
+    icon: string
+  }> = [
+    { type: 'hydration', title: 'Hydration', effect: 'flowers bloom', icon: 'water_drop' },
+    { type: 'reading', title: 'Reading', effect: 'new plants unlock', icon: 'menu_book' },
+    { type: 'fitness', title: 'Fitness', effect: 'trees grow', icon: 'fitness_center' },
+    { type: 'meditation', title: 'Meditation', effect: 'water feature glows', icon: 'self_improvement' },
+    { type: 'coding', title: 'Coding', effect: 'creative vines grow', icon: 'code' },
+    { type: 'sleep', title: 'Sleep', effect: 'night sky softens', icon: 'bedtime' },
+  ]
+  const latestHabit = user.habitLogs[0]
+
+  return (
+    <section className="page-view detail-view">
+      <div className="intro-panel">
+        <p className="page-kicker">Growth Garden</p>
+        <h2>Your habits are becoming a living garden.</h2>
+        <p>
+          Complete small real-life actions and watch the garden respond with
+          flowers, trees, vines, water, and light.
+        </p>
+      </div>
+
+      <motion.div
+        className={`garden-scene level-${user.currentWorld.gardenLevel}`}
+        initial={{ opacity: 0, y: 18 }}
+        animate={{ opacity: 1, y: 0 }}
+      >
+        <div className="garden-sky"></div>
+        <div className="garden-ground">
+          <span className="garden-flower"></span>
+          <span className="garden-tree"></span>
+          <span className="garden-water"></span>
+          <span className="garden-vines"></span>
+          <span className="garden-butterflies"></span>
+        </div>
+        <div>
+          <span>Garden Level {user.currentWorld.gardenLevel || 1}</span>
+          <strong>{latestHabit?.gardenEffect ?? 'starter garden'}</strong>
+          <p>{user.habitLogs.length} completed habit logs</p>
+        </div>
+      </motion.div>
+
+      {latestHabit && (
+        <CompanionMessageCard message={user.companionMessages[0]} />
+      )}
+
+      <section className="habit-grid" aria-label="Growth Garden habits">
+        {habits.map((habit) => (
+          <GrowthHabitCard
+            key={habit.type}
+            title={habit.title}
+            effect={habit.effect}
+            icon={habit.icon}
+            onComplete={() => onCompleteHabit(habit.type)}
+          />
+        ))}
+      </section>
+
+      <div className="xp-grid">
+        <XPBar label="Wellness" value={user.wellnessXP} />
+        <XPBar label="Creator" value={user.creatorXP} />
+        <XPBar label="Growth" value={user.growthXP} />
+      </div>
+
+      <button
+        className="secondary-button inline-action"
+        onClick={() => onNavigate('World')}
+        type="button"
+      >
+        <span className="material-symbols-outlined">public</span>
+        Back to World
+      </button>
+    </section>
+  )
+}
+
+function CompanionPage({
+  user,
+  onNavigate,
+}: {
+  user: DreamUser
+  onNavigate: (tab: Tab) => void
+}) {
+  return (
+    <section className="page-view detail-view">
+      <div className="intro-panel">
+        <p className="page-kicker">Companion</p>
+        <h2>Your DreamFrame companion is listening.</h2>
+        <p>
+          Gentle messages appear when your actions evolve your world, clarify
+          your future self, or make your garden grow.
+        </p>
+      </div>
+      <section className="companion-list">
+        {user.companionMessages.length > 0 ? (
+          user.companionMessages.map((message) => (
+            <CompanionMessageCard key={message.id} message={message} />
+          ))
+        ) : (
+          <CompanionMessageCard
+            message={{
+              id: 'empty_companion',
+              type: 'encouragement',
+              location: 'home',
+              message: 'Small steps still shape the world.',
+              createdAt: new Date().toISOString(),
+              read: false,
+            }}
+          />
+        )}
+      </section>
       <button
         className="secondary-button inline-action"
         onClick={() => onNavigate('World')}

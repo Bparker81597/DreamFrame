@@ -154,6 +154,11 @@
   margin: 42px auto 0;
 }
 
+.home-companion {
+  width: min(100%, 560px);
+  margin: 32px auto 0;
+}
+
 .home-stats div {
   display: grid;
   gap: 8px;
@@ -492,16 +497,35 @@
   text-transform: capitalize;
 }
 
-.quick-access-grid {
+.quick-access-grid,
+.world-map-grid,
+.habit-grid,
+.companion-list {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 16px;
 }
 
-.quick-access-card {
+.quick-access-grid,
+.world-map-grid {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.habit-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.companion-list {
+  width: min(100%, 760px);
+  margin: 0 auto;
+}
+
+.quick-access-card,
+.world-location-card,
+.growth-habit-card,
+.companion-message-card,
+.xp-bar {
   display: grid;
   gap: 10px;
-  min-height: 170px;
   border: 1px solid rgba(255, 255, 255, 0.55);
   border-radius: 28px;
   padding: 22px;
@@ -512,23 +536,62 @@
   backdrop-filter: blur(18px);
 }
 
-.quick-access-card.active-location {
+.quick-access-card,
+.world-location-card,
+.growth-habit-card {
+  min-height: 170px;
+}
+
+.world-location-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: 999px 999px 32px 32px;
+  text-align: center;
+}
+
+.world-location-card::after {
+  position: absolute;
+  inset: auto 18px 12px;
+  height: 14px;
+  border-radius: 999px;
+  background: rgba(107, 56, 212, 0.12);
+  content: '';
+}
+
+.world-location-card.active-location {
+  cursor: pointer;
+}
+
+.world-location-card.active-location::before {
+  position: absolute;
+  inset: -28px;
+  border-radius: inherit;
+  background: radial-gradient(circle, rgba(251, 191, 36, 0.18), transparent 58%);
+  content: '';
+}
+
+.quick-access-card.active-location,
+.growth-habit-card {
   cursor: pointer;
   transition:
     background 250ms ease,
     transform 250ms ease;
 }
 
-.quick-access-card.active-location:hover {
+.quick-access-card.active-location:hover,
+.growth-habit-card:hover {
   background: rgba(255, 255, 255, 0.72);
   transform: translateY(-5px);
 }
 
-.quick-access-card.coming-soon {
+.quick-access-card.coming-soon,
+.world-location-card.coming-soon {
   opacity: 0.64;
 }
 
-.quick-access-card .material-symbols-outlined {
+.quick-access-card .material-symbols-outlined,
+.world-location-card .material-symbols-outlined,
+.growth-habit-card .material-symbols-outlined {
   display: grid;
   place-items: center;
   width: 44px;
@@ -538,11 +601,14 @@
   background: #6b38d4;
 }
 
-.quick-access-card.coming-soon .material-symbols-outlined {
+.quick-access-card.coming-soon .material-symbols-outlined,
+.world-location-card.coming-soon .material-symbols-outlined {
   background: rgba(73, 68, 84, 0.44);
 }
 
-.quick-access-card strong {
+.quick-access-card strong,
+.world-location-card strong,
+.growth-habit-card strong {
   color: #6b38d4;
   font-family: 'EB Garamond', Georgia, serif;
   font-size: 1.35rem;
@@ -550,12 +616,222 @@
   line-height: 1.1;
 }
 
-.quick-access-card small {
+.quick-access-card small,
+.world-location-card small,
+.growth-habit-card small {
   align-self: end;
   color: rgba(73, 68, 84, 0.68);
   font-weight: 800;
   letter-spacing: 0.06em;
   text-transform: uppercase;
+}
+
+.world-map-page .world-preview-card {
+  min-height: 260px;
+}
+
+.era-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+}
+
+.era-badge {
+  border: 1px solid rgba(107, 56, 212, 0.14);
+  border-radius: 999px;
+  padding: 9px 12px;
+  color: rgba(73, 68, 84, 0.72);
+  font-size: 0.82rem;
+  font-weight: 800;
+  text-transform: capitalize;
+  background: rgba(255, 255, 255, 0.54);
+}
+
+.era-badge.active {
+  color: #fff;
+  background: linear-gradient(135deg, #8455ef, #fe7488);
+  box-shadow: 0 14px 30px rgba(107, 56, 212, 0.18);
+}
+
+.companion-message-card {
+  min-height: auto;
+  text-align: left;
+}
+
+.companion-message-card span {
+  color: #6b38d4;
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.companion-message-card p {
+  margin: 0;
+  color: #1c1c19;
+  font-family: 'EB Garamond', Georgia, serif;
+  font-size: 1.45rem;
+  line-height: 1.18;
+}
+
+.companion-message-card small {
+  color: rgba(73, 68, 84, 0.68);
+  text-transform: capitalize;
+}
+
+.xp-bar {
+  min-height: auto;
+  padding: 18px;
+}
+
+.xp-bar > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.xp-bar span {
+  color: rgba(73, 68, 84, 0.68);
+  font-weight: 800;
+}
+
+.xp-bar strong {
+  color: #6b38d4;
+}
+
+.xp-track {
+  display: block;
+  height: 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(107, 56, 212, 0.12);
+}
+
+.xp-track span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #8455ef, #fe7488, #fbbf24);
+}
+
+.garden-scene {
+  position: relative;
+  display: grid;
+  align-items: end;
+  min-height: 360px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.58);
+  border-radius: 36px;
+  padding: 30px;
+  background:
+    radial-gradient(circle at 22% 20%, rgba(208, 188, 255, 0.4), transparent 28%),
+    linear-gradient(180deg, rgba(255, 249, 244, 0.92), rgba(222, 247, 235, 0.68));
+  box-shadow: 0 24px 54px rgba(107, 56, 212, 0.13);
+  backdrop-filter: blur(18px);
+}
+
+.garden-scene > div:last-child {
+  position: relative;
+  z-index: 2;
+}
+
+.garden-scene span {
+  color: rgba(73, 68, 84, 0.68);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.garden-scene strong {
+  display: block;
+  margin-top: 6px;
+  color: #245c58;
+  font-family: 'EB Garamond', Georgia, serif;
+  font-size: 2.4rem;
+  font-weight: 500;
+  text-transform: capitalize;
+}
+
+.garden-scene p {
+  margin: 6px 0 0;
+  color: #494454;
+}
+
+.garden-ground {
+  position: absolute;
+  inset: auto 0 0;
+  height: 48%;
+  border-radius: 50% 50% 0 0;
+  background: linear-gradient(180deg, rgba(137, 205, 194, 0.34), rgba(36, 92, 88, 0.28));
+}
+
+.garden-flower,
+.garden-tree,
+.garden-water,
+.garden-vines,
+.garden-butterflies {
+  position: absolute;
+  display: block;
+  opacity: 0;
+}
+
+.garden-flower {
+  left: 18%;
+  bottom: 42%;
+  width: 78px;
+  height: 78px;
+  border-radius: 999px;
+  background: radial-gradient(circle, #fe7488 10%, #ffdadc 42%, transparent 44%);
+}
+
+.garden-tree {
+  right: 18%;
+  bottom: 40%;
+  width: 88px;
+  height: 120px;
+  border-radius: 50% 50% 34% 34%;
+  background: rgba(36, 92, 88, 0.58);
+}
+
+.garden-water {
+  left: 42%;
+  bottom: 28%;
+  width: 170px;
+  height: 52px;
+  border-radius: 999px;
+  background: rgba(132, 85, 239, 0.26);
+  box-shadow: 0 0 34px rgba(132, 85, 239, 0.2);
+}
+
+.garden-vines {
+  left: 12%;
+  bottom: 26%;
+  width: 180px;
+  height: 24px;
+  border-radius: 999px;
+  background: rgba(36, 92, 88, 0.42);
+}
+
+.garden-butterflies {
+  right: 32%;
+  top: 28%;
+  width: 70px;
+  height: 38px;
+  border-radius: 999px;
+  background: radial-gradient(circle at 30% 50%, #fbbf24 0 28%, transparent 30%),
+    radial-gradient(circle at 70% 50%, #fe7488 0 28%, transparent 30%);
+}
+
+.garden-scene.level-1 .garden-flower,
+.garden-scene.level-2 .garden-flower,
+.garden-scene.level-2 .garden-butterflies,
+.garden-scene.level-3 .garden-flower,
+.garden-scene.level-3 .garden-tree,
+.garden-scene.level-3 .garden-water,
+.garden-scene.level-3 .garden-vines,
+.garden-scene.level-3 .garden-butterflies {
+  opacity: 1;
 }
 
 .creator-studio-scene {
@@ -1101,7 +1377,7 @@
 .bottom-nav {
   bottom: 0;
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(6, 1fr);
   gap: 4px;
   padding: 8px 16px 24px;
   border-top: 1px solid rgba(255, 255, 255, 0.24);
@@ -1168,6 +1444,8 @@
   .detail-grid,
   .profile-detail-grid,
   .quick-access-grid,
+  .world-map-grid,
+  .habit-grid,
   .xp-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -1205,6 +1483,8 @@
   .detail-grid,
   .profile-detail-grid,
   .quick-access-grid,
+  .world-map-grid,
+  .habit-grid,
   .xp-grid,
   .quest-card {
     grid-template-columns: 1fr;

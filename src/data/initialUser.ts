@@ -26,7 +26,7 @@ export const initialUser: DreamUser = {
   currentWorld: {
     worldType: 'creator_studio',
     studioLevel: 1,
-    gardenLevel: 0,
+    gardenLevel: 1,
     sanctuaryLevel: 0,
     observatoryLevel: 0,
     visualState: 'starter_studio',
@@ -36,7 +36,18 @@ export const initialUser: DreamUser = {
   firstFocusSessionComplete: false,
   firstGoalComplete: false,
   goals: [],
+  habitLogs: [],
   journalEntries: [],
+  companionMessages: [
+    {
+      id: 'msg_welcome',
+      type: 'encouragement',
+      location: 'home',
+      message: 'Small steps still shape the world.',
+      createdAt: now,
+      read: false,
+    },
+  ],
   worldEvents: [],
   createdAt: now,
   updatedAt: now,
