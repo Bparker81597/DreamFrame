@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState, type CSSProperties, type MouseEvent } from 'react'
 import './App.css'
 
 type Era = {
@@ -7,6 +7,8 @@ type Era = {
   image: string
   alt: string
 }
+
+type Tab = 'Home' | 'DreamFrame' | 'World' | 'Journal' | 'Me'
 
 const eras: Era[] = [
   {
@@ -53,7 +55,7 @@ const eras: Era[] = [
   },
 ]
 
-const navItems = [
+const navItems: Array<[string, Tab]> = [
   ['home', 'Home'],
   ['filter_frames', 'DreamFrame'],
   ['public', 'World'],
@@ -61,9 +63,61 @@ const navItems = [
   ['person', 'Me'],
 ]
 
+const hubCards: Array<[Tab, string, string, string]> = [
+  ['DreamFrame', 'filter_frames', 'Choose Era', 'Pick the energy for your next chapter.'],
+  ['World', 'public', 'Build World', 'See the environment forming around your choice.'],
+  ['Journal', 'auto_stories', 'Write Ritual', 'Capture thoughts, prompts, and reflections.'],
+  ['Me', 'person', 'Profile', 'Keep your identity, goals, and progress close.'],
+]
+
+const tabSlugs: Record<Tab, string> = {
+  Home: 'home',
+  DreamFrame: 'dreamframe',
+  World: 'world',
+  Journal: 'journal',
+  Me: 'me',
+}
+
+const slugTabs = Object.fromEntries(
+  Object.entries(tabSlugs).map(([tab, slug]) => [slug, tab]),
+) as Record<string, Tab>
+
+const basePath = import.meta.env.BASE_URL.replace(/\/$/, '')
+
+function getPathForTab(tab: Tab) {
+  return `${basePath}/${tabSlugs[tab]}`
+}
+
+function getTabFromPath(pathname: string): Tab {
+  const fallbackPath = basePath || ''
+  const trimmedPath = pathname.replace(/\/$/, '')
+
+  if (trimmedPath === fallbackPath) {
+    return 'Home'
+  }
+
+  const slug = trimmedPath.replace(`${fallbackPath}/`, '').split('/')[0]
+
+  return slugTabs[slug] ?? 'Home'
+}
+
 function App() {
   const [selectedEra, setSelectedEra] = useState('Creator Era')
   const [ritualPulse, setRitualPulse] = useState(false)
+  const [activeTab, setActiveTab] = useState<Tab>(() =>
+    getTabFromPath(window.location.pathname),
+  )
+
+  useEffect(() => {
+    function syncRoute() {
+      setActiveTab(getTabFromPath(window.location.pathname))
+      window.scrollTo({ top: 0 })
+    }
+
+    window.addEventListener('popstate', syncRoute)
+
+    return () => window.removeEventListener('popstate', syncRoute)
+  }, [])
 
   function selectEra(title: string) {
     setSelectedEra(title)
@@ -71,10 +125,22 @@ function App() {
     window.setTimeout(() => setRitualPulse(false), 900)
   }
 
+  function navigate(tab: Tab, event?: MouseEvent<HTMLAnchorElement>) {
+    event?.preventDefault()
+    setActiveTab(tab)
+    window.history.pushState({}, '', getPathForTab(tab))
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
   return (
     <div className={`dreamframe-shell ${ritualPulse ? 'ritual-pulse' : ''}`}>
       <header className="top-nav">
-        <div className="brand-lockup">
+        <button
+          className="brand-lockup"
+          onClick={() => navigate('Home')}
+          type="button"
+          aria-label="Open Home"
+        >
           <div className="avatar">
             <img
               src="https://lh3.googleusercontent.com/aida-public/AB6AXuDMKZSj0Ie-rSmRP0OdXbDGY1wOElkuqBlmMj0Y0sUU-E5rlSw-LKDiynosWKSlBDtEHV4utC70pyFd9Nr20KpGh61xMcNte_kJC1Z86znUlMRPuk4IRiQ1Up9AT0PJmcaKo9k_i-FHEg72MTAJdu7ExRHlrGpA_0UXho9wDoDvDINVLv7LGC27-mzEQCiluuM4xcsF-AWFindYC6TdSr8tWAtN-mp6YhiAR1Do1XssLpG3n6lzKSs6JuYqZnKqinpPCw_Dv2YEp-0"
@@ -82,61 +148,41 @@ function App() {
             />
           </div>
           <h1>DreamFrame</h1>
-        </div>
+        </button>
         <button className="icon-button" type="button" aria-label="Settings">
           <span className="material-symbols-outlined">settings</span>
         </button>
       </header>
 
       <main className="main-canvas">
-        <section className="intro-panel">
-          <h2>What world are you building?</h2>
-          <p>
-            Choose the essence of your next chapter. Your DreamFrame will
-            manifest based on this ritual choice.
-          </p>
-        </section>
-
-        <section className="era-grid" aria-label="DreamFrame eras">
-          {eras.map((era, index) => (
-            <button
-              className={`glass-card ${selectedEra === era.title ? 'selected' : ''}`}
-              key={era.title}
-              onClick={() => selectEra(era.title)}
-              style={{ '--delay': `${index * 80}ms` } as React.CSSProperties}
-              type="button"
-              aria-pressed={selectedEra === era.title}
-            >
-              <span className="image-frame">
-                <img src={era.image} alt={era.alt} />
-              </span>
-              <span className="card-copy">
-                <strong>{era.title}</strong>
-                <span>{era.description}</span>
-              </span>
-            </button>
-          ))}
-        </section>
-
-        <section className="action-panel" aria-label="DreamFrame actions">
-          <button className="glow-button" type="button">
-            <span className="material-symbols-outlined">upload_file</span>
-            Upload Selfie
-          </button>
-          <button className="secondary-button" type="button">
-            <span className="material-symbols-outlined">target</span>
-            Select Goals
-          </button>
-          <p>Your ritual choice is private and secure.</p>
-        </section>
+        {activeTab === 'Home' && (
+          <HomePage selectedEra={selectedEra} onNavigate={navigate} />
+        )}
+        {activeTab === 'DreamFrame' && (
+          <DreamFramePage
+            selectedEra={selectedEra}
+            onSelectEra={selectEra}
+          />
+        )}
+        {activeTab === 'World' && (
+          <WorldPage selectedEra={selectedEra} onNavigate={navigate} />
+        )}
+        {activeTab === 'Journal' && (
+          <JournalPage selectedEra={selectedEra} onNavigate={navigate} />
+        )}
+        {activeTab === 'Me' && (
+          <MePage selectedEra={selectedEra} onNavigate={navigate} />
+        )}
       </main>
 
       <nav className="bottom-nav" aria-label="Primary navigation">
         {navItems.map(([icon, label]) => (
           <a
-            className={label === 'DreamFrame' ? 'active' : ''}
-            href="#top"
+            className={label === activeTab ? 'active' : ''}
+            href={getPathForTab(label)}
             key={label}
+            onClick={(event) => navigate(label, event)}
+            aria-current={label === activeTab ? 'page' : undefined}
           >
             <span className="material-symbols-outlined">{icon}</span>
             <span>{label}</span>
@@ -144,6 +190,217 @@ function App() {
         ))}
       </nav>
     </div>
+  )
+}
+
+function HomePage({
+  selectedEra,
+  onNavigate,
+}: {
+  selectedEra: string
+  onNavigate: (tab: Tab) => void
+}) {
+  return (
+    <section className="page-view home-view">
+      <div className="intro-panel">
+        <p className="page-kicker">Home</p>
+        <h2>Your DreamFrame hub</h2>
+        <p>
+          Start from one place, then move into the frame, world, journal, or
+          profile without losing the era you chose.
+        </p>
+      </div>
+      <div className="home-summary">
+        <span>Current Era</span>
+        <strong>{selectedEra}</strong>
+      </div>
+      <section className="hub-grid" aria-label="DreamFrame sections">
+        {hubCards.map(([tab, icon, title, body], index) => (
+          <button
+            className="hub-card"
+            key={tab}
+            onClick={() => onNavigate(tab)}
+            style={{ '--delay': `${index * 80}ms` } as CSSProperties}
+            type="button"
+          >
+            <span className="material-symbols-outlined">{icon}</span>
+            <strong>{title}</strong>
+            <span>{body}</span>
+          </button>
+        ))}
+      </section>
+    </section>
+  )
+}
+
+function DreamFramePage({
+  selectedEra,
+  onSelectEra,
+}: {
+  selectedEra: string
+  onSelectEra: (title: string) => void
+}) {
+  return (
+    <section className="page-view">
+      <div className="intro-panel">
+        <p className="page-kicker">DreamFrame</p>
+        <h2>What world are you building?</h2>
+        <p>
+          Choose the essence of your next chapter. Your DreamFrame will manifest
+          based on this ritual choice.
+        </p>
+      </div>
+
+      <section className="era-grid" aria-label="DreamFrame eras">
+        {eras.map((era, index) => (
+          <button
+            className={`glass-card ${selectedEra === era.title ? 'selected' : ''}`}
+            key={era.title}
+            onClick={() => onSelectEra(era.title)}
+            style={{ '--delay': `${index * 80}ms` } as CSSProperties}
+            type="button"
+            aria-pressed={selectedEra === era.title}
+          >
+            <span className="image-frame">
+              <img src={era.image} alt={era.alt} />
+            </span>
+            <span className="card-copy">
+              <strong>{era.title}</strong>
+              <span>{era.description}</span>
+            </span>
+          </button>
+        ))}
+      </section>
+
+      <section className="action-panel" aria-label="DreamFrame actions">
+        <button className="glow-button" type="button">
+          <span className="material-symbols-outlined">upload_file</span>
+          Upload Selfie
+        </button>
+        <button className="secondary-button" type="button">
+          <span className="material-symbols-outlined">target</span>
+          Select Goals
+        </button>
+        <p>Your ritual choice is private and secure.</p>
+      </section>
+    </section>
+  )
+}
+
+function WorldPage({
+  selectedEra,
+  onNavigate,
+}: {
+  selectedEra: string
+  onNavigate: (tab: Tab) => void
+}) {
+  return (
+    <section className="page-view detail-view">
+      <div className="intro-panel">
+        <p className="page-kicker">World</p>
+        <h2>Your world is taking shape.</h2>
+        <p>
+          The environment, mood, and visual rules for {selectedEra} live here.
+          This page stays connected to Home and your current DreamFrame choice.
+        </p>
+      </div>
+      <div className="detail-grid">
+        <InfoPanel title="Atmosphere" body="Soft gradients, glass panels, and era-based visuals." />
+        <InfoPanel title="Places" body="Rooms, landscapes, rituals, and settings can be collected here." />
+        <InfoPanel title="Next Step" body="Choose another era anytime from the DreamFrame tab." />
+      </div>
+      <button
+        className="secondary-button inline-action"
+        onClick={() => onNavigate('Home')}
+        type="button"
+      >
+        <span className="material-symbols-outlined">home</span>
+        Back Home
+      </button>
+    </section>
+  )
+}
+
+function JournalPage({
+  selectedEra,
+  onNavigate,
+}: {
+  selectedEra: string
+  onNavigate: (tab: Tab) => void
+}) {
+  return (
+    <section className="page-view detail-view">
+      <div className="intro-panel">
+        <p className="page-kicker">Journal</p>
+        <h2>Write the ritual down.</h2>
+        <p>
+          Prompts, intentions, and reflections for {selectedEra} can gather
+          here as this prototype grows.
+        </p>
+      </div>
+      <div className="journal-card">
+        <label htmlFor="journal-entry">Today I am building toward</label>
+        <textarea
+          id="journal-entry"
+          placeholder="A calmer frame, a clearer world, and one next action..."
+        />
+      </div>
+      <button
+        className="secondary-button inline-action"
+        onClick={() => onNavigate('Home')}
+        type="button"
+      >
+        <span className="material-symbols-outlined">home</span>
+        Back Home
+      </button>
+    </section>
+  )
+}
+
+function MePage({
+  selectedEra,
+  onNavigate,
+}: {
+  selectedEra: string
+  onNavigate: (tab: Tab) => void
+}) {
+  return (
+    <section className="page-view detail-view">
+      <div className="intro-panel">
+        <p className="page-kicker">Me</p>
+        <h2>Your profile anchors the frame.</h2>
+        <p>
+          Keep your selfie, goals, and active era connected to the rest of the
+          experience.
+        </p>
+      </div>
+      <div className="profile-card">
+        <div className="large-avatar">
+          <span className="material-symbols-outlined">person</span>
+        </div>
+        <div>
+          <span>Active Era</span>
+          <strong>{selectedEra}</strong>
+        </div>
+      </div>
+      <button
+        className="secondary-button inline-action"
+        onClick={() => onNavigate('Home')}
+        type="button"
+      >
+        <span className="material-symbols-outlined">home</span>
+        Back Home
+      </button>
+    </section>
+  )
+}
+
+function InfoPanel({ title, body }: { title: string; body: string }) {
+  return (
+    <article className="info-panel">
+      <h3>{title}</h3>
+      <p>{body}</p>
+    </article>
   )
 }
 
