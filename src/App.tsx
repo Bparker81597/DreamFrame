@@ -1,4 +1,7 @@
 import { useEffect, useState, type CSSProperties, type MouseEvent } from 'react'
+import type { DreamUser, DreamUserUpdate } from './models/dreamUser'
+import { applyFirstUpgrade, getLevel, xpRewards } from './models/progression'
+import { loadDreamUser, saveDreamUser } from './storage/dreamUserStorage'
 import './App.css'
 
 type Era = {
@@ -9,32 +12,6 @@ type Era = {
 }
 
 type Tab = 'Home' | 'DreamFrame' | 'World' | 'Journal' | 'Me'
-
-type WorldEvent = {
-  id: string
-  title: string
-  message: string
-}
-
-type DreamUser = {
-  displayName: string
-  currentEra: string
-  futureSelfVision: string
-  creatorXP: number
-  wellnessXP: number
-  reflectionXP: number
-  growthXP: number
-  currentWorld: {
-    worldType: string
-    studioLevel: number
-    visualState: string
-  }
-  firstUpgradeUnlocked: boolean
-  firstReflectionComplete: boolean
-  firstFocusSessionComplete: boolean
-  firstGoalComplete: boolean
-  worldEvents: WorldEvent[]
-}
 
 const eras: Era[] = [
   {
@@ -109,30 +86,6 @@ const slugTabs = Object.fromEntries(
 ) as Record<string, Tab>
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, '')
-const storageKey = 'dreamframe-prototype-user-v1'
-
-const levelThresholds = [0, 50, 120, 250, 500]
-
-const initialUser: DreamUser = {
-  displayName: 'Brittany',
-  currentEra: 'Creator Era',
-  futureSelfVision:
-    'I want to become a confident creative founder building apps that help people grow.',
-  creatorXP: 0,
-  wellnessXP: 0,
-  reflectionXP: 0,
-  growthXP: 0,
-  currentWorld: {
-    worldType: 'creator_studio',
-    studioLevel: 1,
-    visualState: 'starter_studio',
-  },
-  firstUpgradeUnlocked: false,
-  firstReflectionComplete: false,
-  firstFocusSessionComplete: false,
-  firstGoalComplete: false,
-  worldEvents: [],
-}
 
 function getPathForTab(tab: Tab) {
   return `${basePath}/${tabSlugs[tab]}`
@@ -151,59 +104,8 @@ function getTabFromPath(pathname: string): Tab {
   return slugTabs[slug] ?? 'Home'
 }
 
-function getLevel(xp: number) {
-  return levelThresholds.reduce((level, threshold, index) => {
-    return xp >= threshold ? index + 1 : level
-  }, 1)
-}
-
-function loadStoredUser() {
-  const storedUser = window.localStorage.getItem(storageKey)
-
-  if (!storedUser) {
-    return initialUser
-  }
-
-  try {
-    return { ...initialUser, ...JSON.parse(storedUser) } as DreamUser
-  } catch {
-    return initialUser
-  }
-}
-
-function applyFirstUpgrade(user: DreamUser): DreamUser {
-  const readyForUpgrade =
-    user.firstReflectionComplete &&
-    user.firstFocusSessionComplete &&
-    user.firstGoalComplete &&
-    !user.firstUpgradeUnlocked
-
-  if (!readyForUpgrade) {
-    return user
-  }
-
-  return {
-    ...user,
-    creatorXP: user.creatorXP + 50,
-    firstUpgradeUnlocked: true,
-    currentWorld: {
-      ...user.currentWorld,
-      studioLevel: 2,
-      visualState: 'studio_level_2',
-    },
-    worldEvents: [
-      {
-        id: `event_${Date.now()}`,
-        title: 'Studio Level 2 Unlocked',
-        message: 'Your world noticed. Consistency creates momentum.',
-      },
-      ...user.worldEvents,
-    ],
-  }
-}
-
 function App() {
-  const [user, setUser] = useState<DreamUser>(loadStoredUser)
+  const [user, setUser] = useState<DreamUser>(loadDreamUser)
   const [journalDraft, setJournalDraft] = useState('')
   const [ritualPulse, setRitualPulse] = useState(false)
   const [activeTab, setActiveTab] = useState<Tab>(() =>
@@ -211,7 +113,7 @@ function App() {
   )
 
   useEffect(() => {
-    window.localStorage.setItem(storageKey, JSON.stringify(user))
+    saveDreamUser(user)
   }, [user])
 
   useEffect(() => {
@@ -231,7 +133,7 @@ function App() {
     window.setTimeout(() => setRitualPulse(false), 900)
   }
 
-  function updateUser(updater: (currentUser: DreamUser) => DreamUser) {
+  function updateUser(updater: DreamUserUpdate) {
     setUser((currentUser) => applyFirstUpgrade(updater(currentUser)))
     setRitualPulse(true)
     window.setTimeout(() => setRitualPulse(false), 900)
@@ -240,7 +142,7 @@ function App() {
   function completeReflection() {
     updateUser((currentUser) => ({
       ...currentUser,
-      reflectionXP: currentUser.reflectionXP + 10,
+      reflectionXP: currentUser.reflectionXP + xpRewards.complete_reflection,
       firstReflectionComplete: true,
     }))
     setJournalDraft('')
@@ -249,7 +151,7 @@ function App() {
   function completeFocusSession() {
     updateUser((currentUser) => ({
       ...currentUser,
-      creatorXP: currentUser.creatorXP + 20,
+      creatorXP: currentUser.creatorXP + xpRewards.complete_focus_session,
       firstFocusSessionComplete: true,
     }))
   }
@@ -257,7 +159,7 @@ function App() {
   function completeGoal() {
     updateUser((currentUser) => ({
       ...currentUser,
-      growthXP: currentUser.growthXP + 20,
+      growthXP: currentUser.growthXP + xpRewards.complete_goal,
       firstGoalComplete: true,
     }))
   }
@@ -265,7 +167,7 @@ function App() {
   function completeHabit() {
     updateUser((currentUser) => ({
       ...currentUser,
-      wellnessXP: currentUser.wellnessXP + 10,
+      wellnessXP: currentUser.wellnessXP + xpRewards.complete_habit,
     }))
   }
 
