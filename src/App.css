@@ -764,6 +764,61 @@
   justify-self: end;
 }
 
+.center-action {
+  justify-self: center;
+}
+
+.focus-timer-card {
+  display: grid;
+  gap: 16px;
+  width: min(100%, 460px);
+  margin: 0 auto;
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  border-radius: 28px;
+  padding: 24px;
+  background: rgba(255, 255, 255, 0.5);
+  box-shadow: 0 18px 40px rgba(107, 56, 212, 0.1);
+  backdrop-filter: blur(18px);
+}
+
+.focus-timer-card > span {
+  color: rgba(73, 68, 84, 0.68);
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.focus-timer-card > strong {
+  color: #6b38d4;
+  font-family: 'EB Garamond', Georgia, serif;
+  font-size: 2.4rem;
+  font-weight: 500;
+}
+
+.timer-options {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.timer-options button {
+  border: 1px solid rgba(107, 56, 212, 0.18);
+  border-radius: 999px;
+  padding: 12px;
+  color: #6b38d4;
+  font: inherit;
+  font-weight: 800;
+  background: rgba(255, 255, 255, 0.66);
+  cursor: pointer;
+}
+
+.timer-options button.selected {
+  color: #fff;
+  background: #6b38d4;
+  box-shadow: 0 10px 24px rgba(107, 56, 212, 0.2);
+}
+
 .profile-card {
   display: flex;
   align-items: center;

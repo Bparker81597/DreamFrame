@@ -10,6 +10,14 @@ export type WorldEvent = {
   createdAt: string
 }
 
+export type JournalEntry = {
+  id: string
+  prompt: string
+  response: string
+  reflectionXP: number
+  createdAt: string
+}
+
 export type DreamWorld = {
   worldType: string
   studioLevel: number
@@ -43,6 +51,7 @@ export type DreamUser = {
   firstReflectionComplete: boolean
   firstFocusSessionComplete: boolean
   firstGoalComplete: boolean
+  journalEntries: JournalEntry[]
   worldEvents: WorldEvent[]
   createdAt: string
   updatedAt: string

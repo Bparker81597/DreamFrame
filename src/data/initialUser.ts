@@ -35,6 +35,7 @@ export const initialUser: DreamUser = {
   firstReflectionComplete: false,
   firstFocusSessionComplete: false,
   firstGoalComplete: false,
+  journalEntries: [],
   worldEvents: [],
   createdAt: now,
   updatedAt: now,

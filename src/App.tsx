@@ -142,20 +142,48 @@ function App() {
     window.setTimeout(() => setRitualPulse(false), 900)
   }
 
-  function completeReflection() {
+  function completeReflection(response: string) {
+    const trimmedResponse = response.trim()
+
+    if (!trimmedResponse) {
+      return
+    }
+
     updateUser((currentUser) => ({
       ...currentUser,
       reflectionXP: currentUser.reflectionXP + xpRewards.complete_reflection,
       firstReflectionComplete: true,
+      journalEntries: [
+        {
+          id: `entry_${Date.now()}`,
+          prompt: 'Why does this dream matter to you?',
+          response: trimmedResponse,
+          reflectionXP: xpRewards.complete_reflection,
+          createdAt: new Date().toISOString(),
+        },
+        ...currentUser.journalEntries,
+      ],
     }))
     setJournalDraft('')
   }
 
-  function completeFocusSession() {
+  function completeFocusSession(durationMinutes = 25) {
     updateUser((currentUser) => ({
       ...currentUser,
       creatorXP: currentUser.creatorXP + xpRewards.complete_focus_session,
       firstFocusSessionComplete: true,
+      worldEvents: [
+        {
+          id: `focus_${Date.now()}`,
+          type: 'companion_message',
+          title: `${durationMinutes} Minute Focus Session Complete`,
+          message: 'You showed up today. Your studio feels brighter.',
+          affectedLocation: 'creator_studio',
+          seenByUser: false,
+          createdAt: new Date().toISOString(),
+        },
+        ...currentUser.worldEvents,
+      ],
     }))
   }
 
@@ -504,9 +532,18 @@ function CreatorStudioPage({
   onNavigate,
 }: {
   user: DreamUser
-  onCompleteFocusSession: () => void
+  onCompleteFocusSession: (durationMinutes?: number) => void
   onNavigate: (tab: Tab) => void
 }) {
+  const timerOptions = [25, 45, 60]
+  const [selectedMinutes, setSelectedMinutes] = useState(25)
+  const [focusStarted, setFocusStarted] = useState(false)
+
+  function completeSelectedFocusSession() {
+    onCompleteFocusSession(selectedMinutes)
+    setFocusStarted(false)
+  }
+
   return (
     <section className="page-view detail-view">
       <div className="intro-panel">
@@ -540,14 +577,44 @@ function CreatorStudioPage({
       <FirstQuestChecklist user={user} />
 
       <section className="action-panel" aria-label="Creator Studio actions">
-        <button
-          className="glow-button"
-          onClick={onCompleteFocusSession}
-          type="button"
-        >
-          <span className="material-symbols-outlined">timer</span>
-          Complete Focus Session
-        </button>
+        <div className="focus-timer-card">
+          <span>Focus Session</span>
+          <strong>{selectedMinutes} min</strong>
+          <div className="timer-options" aria-label="Timer options">
+            {timerOptions.map((minutes) => (
+              <button
+                className={selectedMinutes === minutes ? 'selected' : ''}
+                key={minutes}
+                onClick={() => {
+                  setSelectedMinutes(minutes)
+                  setFocusStarted(false)
+                }}
+                type="button"
+              >
+                {minutes} min
+              </button>
+            ))}
+          </div>
+          {!focusStarted ? (
+            <button
+              className="glow-button compact-action center-action"
+              onClick={() => setFocusStarted(true)}
+              type="button"
+            >
+              <span className="material-symbols-outlined">timer</span>
+              Start Timer
+            </button>
+          ) : (
+            <button
+              className="glow-button compact-action center-action"
+              onClick={completeSelectedFocusSession}
+              type="button"
+            >
+              <span className="material-symbols-outlined">check_circle</span>
+              Complete Session +20 XP
+            </button>
+          )}
+        </div>
         <p>Creator XP {user.creatorXP}</p>
       </section>
 
@@ -573,7 +640,7 @@ function JournalPage({
   user: DreamUser
   journalDraft: string
   onJournalDraftChange: (value: string) => void
-  onCompleteReflection: () => void
+  onCompleteReflection: (response: string) => void
   onNavigate: (tab: Tab) => void
 }) {
   return (
@@ -587,16 +654,20 @@ function JournalPage({
         </p>
       </div>
       <div className="journal-card">
-        <label htmlFor="journal-entry">Today I am building toward</label>
+        <label htmlFor="journal-entry">Why does this dream matter to you?</label>
         <textarea
           id="journal-entry"
           value={journalDraft}
           onChange={(event) => onJournalDraftChange(event.target.value)}
-          placeholder="A calmer frame, a clearer world, and one next action..."
+          placeholder="Because I want to build something meaningful and become more consistent..."
         />
-        <button className="glow-button compact-action" onClick={onCompleteReflection} type="button">
+        <button
+          className="glow-button compact-action"
+          onClick={() => onCompleteReflection(journalDraft)}
+          type="button"
+        >
           <span className="material-symbols-outlined">auto_stories</span>
-          Save Reflection +10 XP
+          Submit Journal +10 XP
         </button>
       </div>
       <button
@@ -663,7 +734,7 @@ function MePage({
 
 function FirstQuestChecklist({ user }: { user: DreamUser }) {
   const quests = [
-    ['Write first reflection', user.firstReflectionComplete],
+    ['Complete first reflection', user.firstReflectionComplete],
     ['Complete first focus session', user.firstFocusSessionComplete],
     ['Complete first goal', user.firstGoalComplete],
   ] as const
@@ -671,7 +742,7 @@ function FirstQuestChecklist({ user }: { user: DreamUser }) {
   return (
     <section className="quest-card" aria-label="First upgrade checklist">
       <div>
-        <span>First Upgrade</span>
+        <span>Creator Spark Quest</span>
         <strong>
           {user.firstUpgradeUnlocked ? 'Studio Level 2 Unlocked' : '3 actions to unlock'}
         </strong>
