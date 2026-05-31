@@ -10,6 +10,32 @@ type Era = {
 
 type Tab = 'Home' | 'DreamFrame' | 'World' | 'Journal' | 'Me'
 
+type WorldEvent = {
+  id: string
+  title: string
+  message: string
+}
+
+type DreamUser = {
+  displayName: string
+  currentEra: string
+  futureSelfVision: string
+  creatorXP: number
+  wellnessXP: number
+  reflectionXP: number
+  growthXP: number
+  currentWorld: {
+    worldType: string
+    studioLevel: number
+    visualState: string
+  }
+  firstUpgradeUnlocked: boolean
+  firstReflectionComplete: boolean
+  firstFocusSessionComplete: boolean
+  firstGoalComplete: boolean
+  worldEvents: WorldEvent[]
+}
+
 const eras: Era[] = [
   {
     title: 'Healing Era',
@@ -83,6 +109,30 @@ const slugTabs = Object.fromEntries(
 ) as Record<string, Tab>
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, '')
+const storageKey = 'dreamframe-prototype-user-v1'
+
+const levelThresholds = [0, 50, 120, 250, 500]
+
+const initialUser: DreamUser = {
+  displayName: 'Brittany',
+  currentEra: 'Creator Era',
+  futureSelfVision:
+    'I want to become a confident creative founder building apps that help people grow.',
+  creatorXP: 0,
+  wellnessXP: 0,
+  reflectionXP: 0,
+  growthXP: 0,
+  currentWorld: {
+    worldType: 'creator_studio',
+    studioLevel: 1,
+    visualState: 'starter_studio',
+  },
+  firstUpgradeUnlocked: false,
+  firstReflectionComplete: false,
+  firstFocusSessionComplete: false,
+  firstGoalComplete: false,
+  worldEvents: [],
+}
 
 function getPathForTab(tab: Tab) {
   return `${basePath}/${tabSlugs[tab]}`
@@ -101,12 +151,68 @@ function getTabFromPath(pathname: string): Tab {
   return slugTabs[slug] ?? 'Home'
 }
 
+function getLevel(xp: number) {
+  return levelThresholds.reduce((level, threshold, index) => {
+    return xp >= threshold ? index + 1 : level
+  }, 1)
+}
+
+function loadStoredUser() {
+  const storedUser = window.localStorage.getItem(storageKey)
+
+  if (!storedUser) {
+    return initialUser
+  }
+
+  try {
+    return { ...initialUser, ...JSON.parse(storedUser) } as DreamUser
+  } catch {
+    return initialUser
+  }
+}
+
+function applyFirstUpgrade(user: DreamUser): DreamUser {
+  const readyForUpgrade =
+    user.firstReflectionComplete &&
+    user.firstFocusSessionComplete &&
+    user.firstGoalComplete &&
+    !user.firstUpgradeUnlocked
+
+  if (!readyForUpgrade) {
+    return user
+  }
+
+  return {
+    ...user,
+    creatorXP: user.creatorXP + 50,
+    firstUpgradeUnlocked: true,
+    currentWorld: {
+      ...user.currentWorld,
+      studioLevel: 2,
+      visualState: 'studio_level_2',
+    },
+    worldEvents: [
+      {
+        id: `event_${Date.now()}`,
+        title: 'Studio Level 2 Unlocked',
+        message: 'Your world noticed. Consistency creates momentum.',
+      },
+      ...user.worldEvents,
+    ],
+  }
+}
+
 function App() {
-  const [selectedEra, setSelectedEra] = useState('Creator Era')
+  const [user, setUser] = useState<DreamUser>(loadStoredUser)
+  const [journalDraft, setJournalDraft] = useState('')
   const [ritualPulse, setRitualPulse] = useState(false)
   const [activeTab, setActiveTab] = useState<Tab>(() =>
     getTabFromPath(window.location.pathname),
   )
+
+  useEffect(() => {
+    window.localStorage.setItem(storageKey, JSON.stringify(user))
+  }, [user])
 
   useEffect(() => {
     function syncRoute() {
@@ -120,9 +226,47 @@ function App() {
   }, [])
 
   function selectEra(title: string) {
-    setSelectedEra(title)
+    setUser((currentUser) => ({ ...currentUser, currentEra: title }))
     setRitualPulse(true)
     window.setTimeout(() => setRitualPulse(false), 900)
+  }
+
+  function updateUser(updater: (currentUser: DreamUser) => DreamUser) {
+    setUser((currentUser) => applyFirstUpgrade(updater(currentUser)))
+    setRitualPulse(true)
+    window.setTimeout(() => setRitualPulse(false), 900)
+  }
+
+  function completeReflection() {
+    updateUser((currentUser) => ({
+      ...currentUser,
+      reflectionXP: currentUser.reflectionXP + 10,
+      firstReflectionComplete: true,
+    }))
+    setJournalDraft('')
+  }
+
+  function completeFocusSession() {
+    updateUser((currentUser) => ({
+      ...currentUser,
+      creatorXP: currentUser.creatorXP + 20,
+      firstFocusSessionComplete: true,
+    }))
+  }
+
+  function completeGoal() {
+    updateUser((currentUser) => ({
+      ...currentUser,
+      growthXP: currentUser.growthXP + 20,
+      firstGoalComplete: true,
+    }))
+  }
+
+  function completeHabit() {
+    updateUser((currentUser) => ({
+      ...currentUser,
+      wellnessXP: currentUser.wellnessXP + 10,
+    }))
   }
 
   function navigate(tab: Tab, event?: MouseEvent<HTMLAnchorElement>) {
@@ -156,22 +300,30 @@ function App() {
 
       <main className="main-canvas">
         {activeTab === 'Home' && (
-          <HomePage selectedEra={selectedEra} onNavigate={navigate} />
+          <HomePage user={user} onNavigate={navigate} />
         )}
         {activeTab === 'DreamFrame' && (
           <DreamFramePage
-            selectedEra={selectedEra}
+            user={user}
             onSelectEra={selectEra}
+            onCompleteFocusSession={completeFocusSession}
+            onCompleteGoal={completeGoal}
           />
         )}
         {activeTab === 'World' && (
-          <WorldPage selectedEra={selectedEra} onNavigate={navigate} />
+          <WorldPage user={user} onNavigate={navigate} />
         )}
         {activeTab === 'Journal' && (
-          <JournalPage selectedEra={selectedEra} onNavigate={navigate} />
+          <JournalPage
+            user={user}
+            journalDraft={journalDraft}
+            onJournalDraftChange={setJournalDraft}
+            onCompleteReflection={completeReflection}
+            onNavigate={navigate}
+          />
         )}
         {activeTab === 'Me' && (
-          <MePage selectedEra={selectedEra} onNavigate={navigate} />
+          <MePage user={user} onCompleteHabit={completeHabit} onNavigate={navigate} />
         )}
       </main>
 
@@ -194,12 +346,18 @@ function App() {
 }
 
 function HomePage({
-  selectedEra,
+  user,
   onNavigate,
 }: {
-  selectedEra: string
+  user: DreamUser
   onNavigate: (tab: Tab) => void
 }) {
+  const completedFirstQuests = [
+    user.firstReflectionComplete,
+    user.firstFocusSessionComplete,
+    user.firstGoalComplete,
+  ].filter(Boolean).length
+
   return (
     <section className="page-view home-view">
       <div className="intro-panel">
@@ -212,7 +370,11 @@ function HomePage({
       </div>
       <div className="home-summary">
         <span>Current Era</span>
-        <strong>{selectedEra}</strong>
+        <strong>{user.currentEra}</strong>
+        <small>
+          Studio Level {user.currentWorld.studioLevel} / First quest{' '}
+          {completedFirstQuests} of 3
+        </small>
       </div>
       <section className="hub-grid" aria-label="DreamFrame sections">
         {hubCards.map(([tab, icon, title, body], index) => (
@@ -234,11 +396,15 @@ function HomePage({
 }
 
 function DreamFramePage({
-  selectedEra,
+  user,
   onSelectEra,
+  onCompleteFocusSession,
+  onCompleteGoal,
 }: {
-  selectedEra: string
+  user: DreamUser
   onSelectEra: (title: string) => void
+  onCompleteFocusSession: () => void
+  onCompleteGoal: () => void
 }) {
   return (
     <section className="page-view">
@@ -254,12 +420,12 @@ function DreamFramePage({
       <section className="era-grid" aria-label="DreamFrame eras">
         {eras.map((era, index) => (
           <button
-            className={`glass-card ${selectedEra === era.title ? 'selected' : ''}`}
+            className={`glass-card ${user.currentEra === era.title ? 'selected' : ''}`}
             key={era.title}
             onClick={() => onSelectEra(era.title)}
             style={{ '--delay': `${index * 80}ms` } as CSSProperties}
             type="button"
-            aria-pressed={selectedEra === era.title}
+            aria-pressed={user.currentEra === era.title}
           >
             <span className="image-frame">
               <img src={era.image} alt={era.alt} />
@@ -273,25 +439,35 @@ function DreamFramePage({
       </section>
 
       <section className="action-panel" aria-label="DreamFrame actions">
-        <button className="glow-button" type="button">
-          <span className="material-symbols-outlined">upload_file</span>
-          Upload Selfie
+        <button
+          className="glow-button"
+          onClick={onCompleteFocusSession}
+          type="button"
+        >
+          <span className="material-symbols-outlined">timer</span>
+          Complete Focus Session
         </button>
-        <button className="secondary-button" type="button">
+        <button
+          className="secondary-button"
+          onClick={onCompleteGoal}
+          type="button"
+        >
           <span className="material-symbols-outlined">target</span>
-          Select Goals
+          Complete First Goal
         </button>
-        <p>Your ritual choice is private and secure.</p>
+        <p>
+          Creator XP {user.creatorXP} / Growth XP {user.growthXP}
+        </p>
       </section>
     </section>
   )
 }
 
 function WorldPage({
-  selectedEra,
+  user,
   onNavigate,
 }: {
-  selectedEra: string
+  user: DreamUser
   onNavigate: (tab: Tab) => void
 }) {
   return (
@@ -300,49 +476,32 @@ function WorldPage({
         <p className="page-kicker">World</p>
         <h2>Your world is taking shape.</h2>
         <p>
-          The environment, mood, and visual rules for {selectedEra} live here.
-          This page stays connected to Home and your current DreamFrame choice.
+          The environment, mood, and visual rules for {user.currentEra} live
+          here. Real actions now update this world state.
         </p>
       </div>
+      <div className={`studio-preview level-${user.currentWorld.studioLevel}`}>
+        <div>
+          <span>Creator Studio</span>
+          <strong>Level {user.currentWorld.studioLevel}</strong>
+          <p>{user.currentWorld.visualState.replaceAll('_', ' ')}</p>
+        </div>
+        <div className="reward-shelf" aria-label="Unlocked visual rewards">
+          <span className={user.firstUpgradeUnlocked ? 'unlocked' : ''}>Plant</span>
+          <span className={user.firstUpgradeUnlocked ? 'unlocked' : ''}>Lighting</span>
+          <span className={user.firstUpgradeUnlocked ? 'unlocked' : ''}>Vision Board</span>
+        </div>
+      </div>
+      <FirstQuestChecklist user={user} />
       <div className="detail-grid">
-        <InfoPanel title="Atmosphere" body="Soft gradients, glass panels, and era-based visuals." />
-        <InfoPanel title="Places" body="Rooms, landscapes, rituals, and settings can be collected here." />
-        <InfoPanel title="Next Step" body="Choose another era anytime from the DreamFrame tab." />
-      </div>
-      <button
-        className="secondary-button inline-action"
-        onClick={() => onNavigate('Home')}
-        type="button"
-      >
-        <span className="material-symbols-outlined">home</span>
-        Back Home
-      </button>
-    </section>
-  )
-}
-
-function JournalPage({
-  selectedEra,
-  onNavigate,
-}: {
-  selectedEra: string
-  onNavigate: (tab: Tab) => void
-}) {
-  return (
-    <section className="page-view detail-view">
-      <div className="intro-panel">
-        <p className="page-kicker">Journal</p>
-        <h2>Write the ritual down.</h2>
-        <p>
-          Prompts, intentions, and reflections for {selectedEra} can gather
-          here as this prototype grows.
-        </p>
-      </div>
-      <div className="journal-card">
-        <label htmlFor="journal-entry">Today I am building toward</label>
-        <textarea
-          id="journal-entry"
-          placeholder="A calmer frame, a clearer world, and one next action..."
+        <InfoPanel title="World Type" body={user.currentWorld.worldType} />
+        <InfoPanel
+          title="Upgrade Rule"
+          body="Finish one reflection, one focus session, and one goal."
+        />
+        <InfoPanel
+          title="Latest Event"
+          body={user.worldEvents[0]?.message ?? 'No world events yet.'}
         />
       </div>
       <button
@@ -357,11 +516,61 @@ function JournalPage({
   )
 }
 
-function MePage({
-  selectedEra,
+function JournalPage({
+  user,
+  journalDraft,
+  onJournalDraftChange,
+  onCompleteReflection,
   onNavigate,
 }: {
-  selectedEra: string
+  user: DreamUser
+  journalDraft: string
+  onJournalDraftChange: (value: string) => void
+  onCompleteReflection: () => void
+  onNavigate: (tab: Tab) => void
+}) {
+  return (
+    <section className="page-view detail-view">
+      <div className="intro-panel">
+        <p className="page-kicker">Journal</p>
+        <h2>Write the ritual down.</h2>
+        <p>
+          Prompts, intentions, and reflections for {user.currentEra} can gather
+          here as this prototype grows.
+        </p>
+      </div>
+      <div className="journal-card">
+        <label htmlFor="journal-entry">Today I am building toward</label>
+        <textarea
+          id="journal-entry"
+          value={journalDraft}
+          onChange={(event) => onJournalDraftChange(event.target.value)}
+          placeholder="A calmer frame, a clearer world, and one next action..."
+        />
+        <button className="glow-button compact-action" onClick={onCompleteReflection} type="button">
+          <span className="material-symbols-outlined">auto_stories</span>
+          Save Reflection +10 XP
+        </button>
+      </div>
+      <button
+        className="secondary-button inline-action"
+        onClick={() => onNavigate('Home')}
+        type="button"
+      >
+        <span className="material-symbols-outlined">home</span>
+        Back Home
+      </button>
+    </section>
+  )
+}
+
+function MePage({
+  user,
+  onCompleteHabit,
+  onNavigate,
+}: {
+  user: DreamUser
+  onCompleteHabit: () => void
   onNavigate: (tab: Tab) => void
 }) {
   return (
@@ -380,9 +589,19 @@ function MePage({
         </div>
         <div>
           <span>Active Era</span>
-          <strong>{selectedEra}</strong>
+          <strong>{user.currentEra}</strong>
         </div>
       </div>
+      <div className="xp-grid">
+        <InfoPanel title={`Creator Level ${getLevel(user.creatorXP)}`} body={`${user.creatorXP} XP`} />
+        <InfoPanel title={`Wellness Level ${getLevel(user.wellnessXP)}`} body={`${user.wellnessXP} XP`} />
+        <InfoPanel title={`Reflection Level ${getLevel(user.reflectionXP)}`} body={`${user.reflectionXP} XP`} />
+        <InfoPanel title={`Growth Level ${getLevel(user.growthXP)}`} body={`${user.growthXP} XP`} />
+      </div>
+      <button className="glow-button inline-action" onClick={onCompleteHabit} type="button">
+        <span className="material-symbols-outlined">local_florist</span>
+        Complete Habit +10 XP
+      </button>
       <button
         className="secondary-button inline-action"
         onClick={() => onNavigate('Home')}
@@ -391,6 +610,35 @@ function MePage({
         <span className="material-symbols-outlined">home</span>
         Back Home
       </button>
+    </section>
+  )
+}
+
+function FirstQuestChecklist({ user }: { user: DreamUser }) {
+  const quests = [
+    ['Write first reflection', user.firstReflectionComplete],
+    ['Complete first focus session', user.firstFocusSessionComplete],
+    ['Complete first goal', user.firstGoalComplete],
+  ] as const
+
+  return (
+    <section className="quest-card" aria-label="First upgrade checklist">
+      <div>
+        <span>First Upgrade</span>
+        <strong>
+          {user.firstUpgradeUnlocked ? 'Studio Level 2 Unlocked' : '3 actions to unlock'}
+        </strong>
+      </div>
+      <ul>
+        {quests.map(([quest, complete]) => (
+          <li className={complete ? 'complete' : ''} key={quest}>
+            <span className="material-symbols-outlined">
+              {complete ? 'check_circle' : 'radio_button_unchecked'}
+            </span>
+            {quest}
+          </li>
+        ))}
+      </ul>
     </section>
   )
 }
