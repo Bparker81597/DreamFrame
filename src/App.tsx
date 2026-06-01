@@ -12,6 +12,7 @@ import { activeEra, eras as eraConfigs } from './lib/eras'
 import { completeHabit as evolveHabit } from './lib/worldEvolution'
 import type {
   CheckInMood,
+  CreatorProject,
   DailyActionType,
   DreamUser,
   DreamUserUpdate,
@@ -163,6 +164,185 @@ const dailyActions: Record<
   },
 }
 
+const creatorStudioLevels = [
+  {
+    level: 1,
+    name: 'Starter Studio',
+    message: 'Every creator starts somewhere.',
+    unlocks: ['laptop', 'desk', 'notebook', 'basic chair'],
+  },
+  {
+    level: 2,
+    name: 'Momentum Studio',
+    message: 'Your world noticed.',
+    unlocks: ['plant', 'better lighting', 'vision board'],
+  },
+  {
+    level: 3,
+    name: 'Focused Studio',
+    message: 'Consistency is shaping your future.',
+    unlocks: ['dual monitors', 'creator shelf', 'wall art'],
+  },
+  {
+    level: 4,
+    name: 'Builder Studio',
+    message: "You're becoming who you imagined.",
+    unlocks: ['premium setup', 'project displays', 'achievement wall'],
+  },
+  {
+    level: 5,
+    name: 'Dream Studio',
+    message: "Look how far you've come.",
+    unlocks: ['dream environment', 'personalized aesthetic', 'legendary creator status'],
+  },
+]
+
+const futureCreatorMessages = [
+  'Keep building.',
+  'One session at a time.',
+  'Momentum compounds.',
+  'The work becomes visible when you return to it.',
+]
+
+function getStudioLevelConfig(level: number) {
+  return creatorStudioLevels[Math.min(Math.max(level, 1), 5) - 1]
+}
+
+function countFocusSessions(user: DreamUser) {
+  return user.worldEvents.filter((event) =>
+    event.title.toLowerCase().includes('focus session complete'),
+  ).length
+}
+
+function countProjectWorkDays(user: DreamUser) {
+  return user.creatorProjects.reduce(
+    (total, project) => total + project.daysWorked,
+    0,
+  )
+}
+
+function countProjectMilestones(user: DreamUser) {
+  return user.creatorProjects.reduce(
+    (total, project) => total + project.milestonesCompleted,
+    0,
+  )
+}
+
+function addCreatorCompanionMessage(message: string) {
+  return {
+    id: `msg_creator_${Date.now()}`,
+    type: 'future_self' as const,
+    location: 'creator_studio',
+    message,
+    createdAt: new Date().toISOString(),
+    read: false,
+  }
+}
+
+function addProgressEntry(
+  title: string,
+  detail: string,
+  xpGained: number,
+  worldEffect: string,
+) {
+  return {
+    id: `progress_${Date.now()}`,
+    date: getTodayKey(),
+    title,
+    detail,
+    xpGained,
+    worldEffect,
+    createdAt: new Date().toISOString(),
+  }
+}
+
+function refreshCreatorEraProgress(user: DreamUser): DreamUser {
+  const nextUser = checkFirstUpgrade(user)
+  let nextStudioLevel = nextUser.currentWorld.studioLevel
+  const focusSessions = countFocusSessions(nextUser)
+  const journalEntries = nextUser.journalEntries.length
+  const projectWorkDays = countProjectWorkDays(nextUser)
+  const projectMilestones = countProjectMilestones(nextUser)
+
+  const questChecks = {
+    creator_spark:
+      nextUser.firstReflectionComplete &&
+      nextUser.firstFocusSessionComplete &&
+      nextUser.firstGoalComplete,
+    momentum: focusSessions >= 3 && journalEntries >= 3 && projectWorkDays >= 3,
+    builder:
+      nextUser.creatorLevel >= 3 &&
+      projectMilestones >= 1 &&
+      nextUser.bestDailyStreak >= 7,
+  }
+
+  const creatorQuestlines = nextUser.creatorQuestlines.map((questline) => {
+    const isComplete = questChecks[questline.id]
+
+    if (!isComplete || questline.completed) {
+      return questline
+    }
+
+    nextStudioLevel = Math.max(nextStudioLevel, questline.rewardStudioLevel)
+
+    return {
+      ...questline,
+      completed: true,
+      completedAt: new Date().toISOString(),
+    }
+  })
+
+  if (nextUser.creatorLevel >= 5) {
+    nextStudioLevel = Math.max(nextStudioLevel, 5)
+  }
+
+  const creatorAchievements = nextUser.creatorAchievements.map((achievement) => {
+    const shouldUnlock =
+      (achievement.id === 'first_spark' && questChecks.creator_spark) ||
+      (achievement.id === 'project_builder' && projectWorkDays >= 3) ||
+      (achievement.id === 'seven_day_builder' && nextUser.bestDailyStreak >= 7)
+
+    if (!shouldUnlock || achievement.unlocked) {
+      return achievement
+    }
+
+    return {
+      ...achievement,
+      unlocked: true,
+      unlockedAt: new Date().toISOString(),
+    }
+  })
+
+  const existingChapterCount = nextUser.storybookChapters.length
+  const shouldAddMomentumChapter =
+    questChecks.momentum &&
+    !nextUser.storybookChapters.some((chapter) => chapter.title === 'Momentum')
+  const nextStorybookChapters = shouldAddMomentumChapter
+    ? [
+        {
+          id: `chapter_${Date.now()}`,
+          chapterNumber: existingChapterCount + 1,
+          title: 'Momentum',
+          body: `${nextUser.displayName} kept returning to the studio. Focus sessions, journal entries, and project days turned the room into a place with evidence.`,
+          createdAt: new Date().toISOString(),
+        },
+        ...nextUser.storybookChapters,
+      ]
+    : nextUser.storybookChapters
+
+  return {
+    ...nextUser,
+    creatorQuestlines,
+    creatorAchievements,
+    storybookChapters: nextStorybookChapters,
+    currentWorld: {
+      ...nextUser.currentWorld,
+      studioLevel: nextStudioLevel,
+      visualState: `studio_level_${nextStudioLevel}`,
+    },
+  }
+}
+
 function getTodayKey() {
   return new Date().toISOString().slice(0, 10)
 }
@@ -254,7 +434,7 @@ function App() {
 
   function updateUser(updater: DreamUserUpdate) {
     setUser((currentUser) => {
-      const nextUser = checkFirstUpgrade(updater(currentUser))
+      const nextUser = refreshCreatorEraProgress(updater(currentUser))
 
       if (!currentUser.firstUpgradeUnlocked && nextUser.firstUpgradeUnlocked) {
         setShowUpgradeModal(true)
@@ -277,6 +457,21 @@ function App() {
       ...currentUser,
       reflectionXP: currentUser.reflectionXP + xpRewards.complete_reflection,
       firstReflectionComplete: true,
+      progressHistory: [
+        addProgressEntry(
+          'Journal entry complete',
+          trimmedResponse,
+          xpRewards.complete_reflection,
+          'the inspiration wall gains a new note',
+        ),
+        ...currentUser.progressHistory,
+      ],
+      companionMessages: [
+        addCreatorCompanionMessage(
+          futureCreatorMessages[currentUser.journalEntries.length % futureCreatorMessages.length],
+        ),
+        ...currentUser.companionMessages,
+      ],
       journalEntries: [
         {
           id: `entry_${Date.now()}`,
@@ -296,6 +491,19 @@ function App() {
       ...currentUser,
       creatorXP: currentUser.creatorXP + xpRewards.complete_focus_session,
       firstFocusSessionComplete: true,
+      progressHistory: [
+        addProgressEntry(
+          'Focus session complete',
+          `${durationMinutes} minutes of creator attention`,
+          xpRewards.complete_focus_session,
+          'the studio light gets warmer',
+        ),
+        ...currentUser.progressHistory,
+      ],
+      companionMessages: [
+        addCreatorCompanionMessage('One session at a time.'),
+        ...currentUser.companionMessages,
+      ],
       worldEvents: [
         {
           id: `focus_${Date.now()}`,
@@ -479,7 +687,88 @@ function App() {
       growthXP: currentUser.firstGoalComplete
         ? currentUser.growthXP
         : currentUser.growthXP + xpRewards.complete_goal,
+      progressHistory: currentUser.firstGoalComplete
+        ? currentUser.progressHistory
+        : [
+            addProgressEntry(
+              'Goal completed',
+              'Work on DreamFrame',
+              xpRewards.complete_goal,
+              'the desk clears space for the next build',
+            ),
+            ...currentUser.progressHistory,
+          ],
       firstGoalComplete: true,
+    }))
+  }
+
+  function advanceProject(projectId: string) {
+    updateUser((currentUser) => ({
+      ...currentUser,
+      creatorXP: currentUser.creatorXP + 15,
+      creatorProjects: currentUser.creatorProjects.map((project) =>
+        project.id === projectId
+          ? {
+              ...project,
+              progress: Math.min(project.progress + 10, 100),
+              status: project.status === 'idea' ? 'building' : project.status,
+              daysWorked: project.daysWorked + 1,
+              updatedAt: new Date().toISOString(),
+            }
+          : project,
+      ),
+      progressHistory: [
+        addProgressEntry(
+          'Project moved forward',
+          currentUser.creatorProjects.find((project) => project.id === projectId)
+            ?.title ?? 'Creator project',
+          15,
+          'a project display lights up in the studio',
+        ),
+        ...currentUser.progressHistory,
+      ],
+      companionMessages: [
+        addCreatorCompanionMessage('Momentum compounds.'),
+        ...currentUser.companionMessages,
+      ],
+    }))
+  }
+
+  function completeProjectMilestone(projectId: string) {
+    updateUser((currentUser) => ({
+      ...currentUser,
+      creatorXP: currentUser.creatorXP + 50,
+      creatorProjects: currentUser.creatorProjects.map((project) =>
+        project.id === projectId
+          ? {
+              ...project,
+              progress: Math.min(project.progress + 25, 100),
+              status: project.progress + 25 >= 100 ? 'launched' : 'building',
+              milestonesCompleted: project.milestonesCompleted + 1,
+              nextMilestone:
+                project.progress + 25 >= 100
+                  ? 'Celebrate and share what shipped'
+                  : 'Define the next visible milestone',
+              updatedAt: new Date().toISOString(),
+            }
+          : project,
+      ),
+      progressHistory: [
+        addProgressEntry(
+          'Project milestone finished',
+          currentUser.creatorProjects.find((project) => project.id === projectId)
+            ?.title ?? 'Creator project',
+          50,
+          'the achievement wall adds a new marker',
+        ),
+        ...currentUser.progressHistory,
+      ],
+      companionMessages: [
+        addCreatorCompanionMessage(
+          "You're becoming who you imagined.",
+        ),
+        ...currentUser.companionMessages,
+      ],
     }))
   }
 
@@ -606,6 +895,7 @@ function App() {
               <DreamFramePage
                 user={user}
                 onSelectEra={selectEra}
+                onNavigate={navigate}
                 onCompleteFocusSession={completeFocusSession}
                 onCreateFirstGoal={createFirstGoal}
                 onCompleteGoal={completeGoal}
@@ -618,6 +908,8 @@ function App() {
               <CreatorStudioPage
                 user={user}
                 onCompleteFocusSession={completeFocusSession}
+                onAdvanceProject={advanceProject}
+                onCompleteProjectMilestone={completeProjectMilestone}
                 onNavigate={navigate}
               />
             )}
@@ -876,10 +1168,11 @@ function DailyCheckInCard({
   const [actionType, setActionType] = useState<DailyActionType>('breathe')
   const [intention, setIntention] = useState('')
   const moods: Array<{ value: CheckInMood; label: string }> = [
-    { value: 'bright', label: 'Bright' },
-    { value: 'steady', label: 'Steady' },
-    { value: 'tender', label: 'Tender' },
-    { value: 'stuck', label: 'Stuck' },
+    { value: 'inspired', label: 'Inspired' },
+    { value: 'focused', label: 'Focused' },
+    { value: 'motivated', label: 'Motivated' },
+    { value: 'calm', label: 'Calm' },
+    { value: 'tired', label: 'Tired' },
   ]
 
   if (todaysCheckIn) {
@@ -899,7 +1192,7 @@ function DailyCheckInCard({
     <section className="daily-check-card" aria-label="Daily check-in">
       <div className="ritual-card-heading">
         <span>Daily Check-In</span>
-        <strong>How are you arriving today?</strong>
+        <strong>Morning: how are you showing up today?</strong>
       </div>
       <div className="mood-options" aria-label="Mood options">
         {moods.map((option) => (
@@ -949,17 +1242,27 @@ function DailyCheckInCard({
 function DreamFramePage({
   user,
   onSelectEra,
+  onNavigate,
   onCompleteFocusSession,
   onCreateFirstGoal,
   onCompleteGoal,
 }: {
   user: DreamUser
   onSelectEra: (title: string) => void
+  onNavigate: (tab: Tab) => void
   onCompleteFocusSession: () => void
   onCreateFirstGoal: () => void
   onCompleteGoal: () => void
 }) {
   const firstGoal = user.goals.find((goal) => goal.title === 'Work on DreamFrame')
+
+  function selectEraCard(title: string) {
+    onSelectEra(title)
+
+    if (title === 'Creator Era') {
+      window.setTimeout(() => onNavigate('CreatorStudio'), 150)
+    }
+  }
 
   return (
     <section className="page-view">
@@ -977,7 +1280,7 @@ function DreamFramePage({
           <button
             className={`glass-card ${user.currentEra === era.title ? 'selected' : ''}`}
             key={era.title}
-            onClick={() => onSelectEra(era.title)}
+            onClick={() => selectEraCard(era.title)}
             style={{ '--delay': `${index * 80}ms` } as CSSProperties}
             type="button"
             aria-pressed={user.currentEra === era.title}
@@ -1139,15 +1442,21 @@ function WorldPage({
 function CreatorStudioPage({
   user,
   onCompleteFocusSession,
+  onAdvanceProject,
+  onCompleteProjectMilestone,
   onNavigate,
 }: {
   user: DreamUser
   onCompleteFocusSession: (durationMinutes?: number) => void
+  onAdvanceProject: (projectId: string) => void
+  onCompleteProjectMilestone: (projectId: string) => void
   onNavigate: (tab: Tab) => void
 }) {
   const timerOptions = [25, 45, 60]
   const [selectedMinutes, setSelectedMinutes] = useState(25)
   const [focusStarted, setFocusStarted] = useState(false)
+  const studioLevel = user.currentWorld.studioLevel
+  const studioConfig = getStudioLevelConfig(studioLevel)
 
   function completeSelectedFocusSession() {
     onCompleteFocusSession(selectedMinutes)
@@ -1157,21 +1466,26 @@ function CreatorStudioPage({
   return (
     <section className="page-view detail-view">
       <div className="intro-panel">
-        <p className="page-kicker">Creator Studio</p>
-        <h2>Creator Studio Level {user.currentWorld.studioLevel}</h2>
+        <p className="page-kicker">Creator Era</p>
+        <h2>{studioConfig.name}</h2>
         <p>
-          Your starter studio is quiet and ready: a creator desk, laptop, mood
-          lighting, an empty shelf, and a small plant placeholder.
+          I am building something meaningful. Every small step matters.
         </p>
       </div>
 
       <div
-        className={`creator-studio-scene level-${user.currentWorld.studioLevel}`}
+        className={`creator-studio-scene creator-era-studio level-${studioLevel}`}
         aria-label="Creator Studio visual"
       >
+        <div className="city-skyline">
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
         <div className="mood-light left-light"></div>
         <div className="mood-light right-light"></div>
-        {user.firstUpgradeUnlocked && (
+        {studioLevel >= 2 && (
           <motion.div
             className="vision-board"
             initial={{ opacity: 0, scale: 0.9, y: 12 }}
@@ -1183,17 +1497,20 @@ function CreatorStudioPage({
             <span></span>
           </motion.div>
         )}
+        {studioLevel >= 4 && <div className="achievement-wall"><span></span><span></span><span></span></div>}
         <div className="wall-shelf">
           <span></span>
           <span></span>
           <span></span>
         </div>
+        {studioLevel >= 3 && <div className="wall-art"></div>}
         <div className="desk">
+          <div className="studio-notebook"></div>
           <div className="laptop">
             <div className="laptop-screen"></div>
             <div className="laptop-base"></div>
           </div>
-          {user.firstUpgradeUnlocked && (
+          {studioLevel >= 3 && (
             <motion.div
               className="second-monitor"
               initial={{ opacity: 0, x: 24 }}
@@ -1203,15 +1520,29 @@ function CreatorStudioPage({
               <div></div>
             </motion.div>
           )}
+          {studioLevel >= 4 && (
+            <div className="project-displays">
+              <span></span>
+              <span></span>
+            </div>
+          )}
           <div className="plant-placeholder">
             <span></span>
           </div>
         </div>
+        <div className="studio-level-caption">
+          <span>Level {studioLevel}</span>
+          <strong>{studioConfig.message}</strong>
+          <p>{studioConfig.unlocks.join(' / ')}</p>
+        </div>
       </div>
 
-      <FirstQuestChecklist user={user} />
+      <section className="creator-command-grid">
+        <FirstQuestChecklist user={user} />
+        <CreatorXPPanel user={user} />
+      </section>
 
-      <section className="action-panel" aria-label="Creator Studio actions">
+      <section className="creator-workbench" aria-label="Creator Studio actions">
         <div className="focus-timer-card">
           <span>Focus Session</span>
           <strong>{selectedMinutes} min</strong>
@@ -1250,8 +1581,17 @@ function CreatorStudioPage({
             </button>
           )}
         </div>
-        <p>Creator XP {user.creatorXP}</p>
       </section>
+
+      <CreatorProjectBoard
+        projects={user.creatorProjects}
+        onAdvanceProject={onAdvanceProject}
+        onCompleteProjectMilestone={onCompleteProjectMilestone}
+      />
+
+      <CreatorQuestlinePanel user={user} />
+      <CreatorStorybook user={user} />
+      <CreatorAchievementWall user={user} />
 
       <button
         className="secondary-button inline-action"
@@ -1261,6 +1601,186 @@ function CreatorStudioPage({
         <span className="material-symbols-outlined">public</span>
         Back to World
       </button>
+    </section>
+  )
+}
+
+function CreatorXPPanel({ user }: { user: DreamUser }) {
+  return (
+    <section className="creator-xp-panel" aria-label="Creator XP system">
+      <div className="ritual-card-heading">
+        <span>Creator XP Engine</span>
+        <strong>Creator Level {user.creatorLevel}</strong>
+      </div>
+      <XPBar label="Creator XP" value={user.creatorXP} max={250} />
+      <ul>
+        <li><span>Focus Session</span><strong>+20 XP</strong></li>
+        <li><span>Journal Entry</span><strong>+10 XP</strong></li>
+        <li><span>Goal Completed</span><strong>+20 XP</strong></li>
+        <li><span>Project Milestone</span><strong>+50 XP</strong></li>
+      </ul>
+    </section>
+  )
+}
+
+function CreatorProjectBoard({
+  projects,
+  onAdvanceProject,
+  onCompleteProjectMilestone,
+}: {
+  projects: CreatorProject[]
+  onAdvanceProject: (projectId: string) => void
+  onCompleteProjectMilestone: (projectId: string) => void
+}) {
+  return (
+    <section className="creator-section" aria-label="Creator projects">
+      <div className="section-heading-row">
+        <div>
+          <p className="page-kicker">Projects</p>
+          <h3>The heart of Creator Era.</h3>
+        </div>
+        <span>Ideas into reality</span>
+      </div>
+      <div className="project-grid">
+        {projects.map((project) => (
+          <article className="project-card" key={project.id}>
+            <div className="project-card-header">
+              <span>{project.status}</span>
+              <strong>{project.title}</strong>
+            </div>
+            <div className="project-progress" aria-label={`${project.progress}% complete`}>
+              <span style={{ width: `${project.progress}%` }}></span>
+            </div>
+            <p>{project.progress}% complete</p>
+            <dl>
+              <div>
+                <dt>Next Milestone</dt>
+                <dd>{project.nextMilestone}</dd>
+              </div>
+              <div>
+                <dt>Reward</dt>
+                <dd>+{project.xpReward} Creator XP</dd>
+              </div>
+            </dl>
+            <div className="project-actions">
+              <button className="secondary-button" onClick={() => onAdvanceProject(project.id)} type="button">
+                <span className="material-symbols-outlined">trending_up</span>
+                Work Today
+              </button>
+              <button className="glow-button" onClick={() => onCompleteProjectMilestone(project.id)} type="button">
+                <span className="material-symbols-outlined">flag</span>
+                Finish Milestone
+              </button>
+            </div>
+          </article>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+function CreatorQuestlinePanel({ user }: { user: DreamUser }) {
+  type QuestTask = [string, boolean]
+  type QuestProgressMap = Record<
+    DreamUser['creatorQuestlines'][number]['id'],
+    QuestTask[]
+  >
+  const focusSessions = countFocusSessions(user)
+  const journalEntries = user.journalEntries.length
+  const projectWorkDays = countProjectWorkDays(user)
+  const projectMilestones = countProjectMilestones(user)
+  const questProgress: QuestProgressMap = {
+    creator_spark: [
+      ['Write your first reflection', user.firstReflectionComplete],
+      ['Complete a focus session', user.firstFocusSessionComplete],
+      ['Complete your first goal', user.firstGoalComplete],
+    ],
+    momentum: [
+      [`Complete 3 focus sessions (${focusSessions}/3)`, focusSessions >= 3],
+      [`Complete 3 journal entries (${journalEntries}/3)`, journalEntries >= 3],
+      [`Work on a project 3 days (${projectWorkDays}/3)`, projectWorkDays >= 3],
+    ],
+    builder: [
+      [`Reach Creator Level 3 (${user.creatorLevel}/3)`, user.creatorLevel >= 3],
+      [`Finish a milestone (${projectMilestones}/1)`, projectMilestones >= 1],
+      [`Complete 7-day streak (${user.bestDailyStreak}/7)`, user.bestDailyStreak >= 7],
+    ],
+  }
+
+  return (
+    <section className="creator-section" aria-label="Creator questlines">
+      <div className="section-heading-row">
+        <div>
+          <p className="page-kicker">Questlines</p>
+          <h3>Unlock the next studio.</h3>
+        </div>
+      </div>
+      <div className="questline-grid">
+        {user.creatorQuestlines.map((questline) => (
+          <article className={questline.completed ? 'questline-card complete' : 'questline-card'} key={questline.id}>
+            <span>{questline.completed ? 'Complete' : `Reward: ${questline.reward}`}</span>
+            <strong>{questline.title}</strong>
+            <p>{questline.description}</p>
+            <ul>
+              {questProgress[questline.id].map(([label, complete]) => (
+                <li className={complete ? 'complete' : ''} key={label}>
+                  <span className="material-symbols-outlined">
+                    {complete ? 'check_circle' : 'radio_button_unchecked'}
+                  </span>
+                  {label}
+                </li>
+              ))}
+            </ul>
+          </article>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+function CreatorStorybook({ user }: { user: DreamUser }) {
+  return (
+    <section className="creator-section" aria-label="Creator storybook">
+      <div className="section-heading-row">
+        <div>
+          <p className="page-kicker">Storybook</p>
+          <h3>Collected chapters.</h3>
+        </div>
+        <span>Weekly creator story</span>
+      </div>
+      <div className="storybook-grid">
+        {user.storybookChapters.map((chapter) => (
+          <article className="storybook-card" key={chapter.id}>
+            <span>Chapter {chapter.chapterNumber}</span>
+            <strong>{chapter.title}</strong>
+            <p>{chapter.body}</p>
+          </article>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+function CreatorAchievementWall({ user }: { user: DreamUser }) {
+  return (
+    <section className="creator-section" aria-label="Creator achievements">
+      <div className="section-heading-row">
+        <div>
+          <p className="page-kicker">Milestones</p>
+          <h3>Achievement wall.</h3>
+        </div>
+      </div>
+      <div className="achievement-grid">
+        {user.creatorAchievements.map((achievement) => (
+          <article className={achievement.unlocked ? 'achievement-card unlocked' : 'achievement-card'} key={achievement.id}>
+            <span className="material-symbols-outlined">
+              {achievement.unlocked ? 'workspace_premium' : 'lock'}
+            </span>
+            <strong>{achievement.title}</strong>
+            <p>{achievement.description}</p>
+          </article>
+        ))}
+      </div>
     </section>
   )
 }
@@ -1276,10 +1796,10 @@ function FutureSelfPage({
     <section className="page-view detail-view">
       <div className="intro-panel">
         <p className="page-kicker">Future Self</p>
-        <h2>Future Self Observatory</h2>
+        <h2>Future Creator Self</h2>
         <p>
-          A simple view of who you are now, who you are becoming, and what your
-          DreamFrame has already changed.
+          Current self, future creator self, and the proof that momentum is
+          already taking shape.
         </p>
       </div>
 
@@ -1313,8 +1833,9 @@ function FutureSelfPage({
         </motion.article>
         <span className="flow-arrow">↓</span>
         <motion.article className="future-panel highlighted" whileHover={{ y: -5 }}>
-          <span>Future Self Vision</span>
+          <span>Future Creator Self</span>
           <strong>{user.futureSelfVision}</strong>
+          <p>{futureCreatorMessages[user.creatorLevel % futureCreatorMessages.length]}</p>
         </motion.article>
         <span className="flow-arrow">↓</span>
         <motion.article className="future-panel" whileHover={{ y: -5 }}>
@@ -1324,9 +1845,12 @@ function FutureSelfPage({
             <strong>Garden Level {user.currentWorld.gardenLevel}</strong>
             <strong>Creator Level {user.creatorLevel}</strong>
             <strong>{user.creatorXP} XP</strong>
+            <strong>{user.creatorProjects.length} Projects</strong>
           </div>
         </motion.article>
       </div>
+
+      <CreatorStorybook user={user} />
 
       <ProgressTimeline currentLevel={user.worldLevel} />
 

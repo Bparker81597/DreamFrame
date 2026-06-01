@@ -27,6 +27,14 @@ export function loadDreamUser() {
         parsedUser.progressHistory ?? initialUser.progressHistory,
       waitlistSignups:
         parsedUser.waitlistSignups ?? initialUser.waitlistSignups,
+      creatorProjects:
+        parsedUser.creatorProjects ?? initialUser.creatorProjects,
+      creatorQuestlines:
+        parsedUser.creatorQuestlines ?? initialUser.creatorQuestlines,
+      storybookChapters:
+        parsedUser.storybookChapters ?? initialUser.storybookChapters,
+      creatorAchievements:
+        parsedUser.creatorAchievements ?? initialUser.creatorAchievements,
       habitLogs: parsedUser.habitLogs ?? initialUser.habitLogs,
       journalEntries: parsedUser.journalEntries ?? initialUser.journalEntries,
       companionMessages:

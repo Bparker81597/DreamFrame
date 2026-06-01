@@ -44,6 +44,10 @@ export function createStarterWorldUser(input: CreateStarterUserInput): DreamUser
     dailyCheckIns: [],
     progressHistory: [],
     waitlistSignups: initialUser.waitlistSignups,
+    creatorProjects: initialUser.creatorProjects,
+    creatorQuestlines: initialUser.creatorQuestlines,
+    storybookChapters: initialUser.storybookChapters,
+    creatorAchievements: initialUser.creatorAchievements,
     habitLogs: [],
     journalEntries: [],
     companionMessages: [

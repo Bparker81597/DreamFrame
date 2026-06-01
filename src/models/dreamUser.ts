@@ -29,7 +29,16 @@ export type HabitLog = {
   loggedAt: string
 }
 
-export type CheckInMood = 'bright' | 'steady' | 'tender' | 'stuck'
+export type CheckInMood =
+  | 'bright'
+  | 'steady'
+  | 'tender'
+  | 'stuck'
+  | 'inspired'
+  | 'focused'
+  | 'motivated'
+  | 'calm'
+  | 'tired'
 
 export type DailyActionType = 'breathe' | 'hydrate' | 'focus' | 'reflect'
 
@@ -67,6 +76,51 @@ export type WaitlistSignup = {
   id: string
   email: string
   createdAt: string
+}
+
+export type CreatorProjectStatus =
+  | 'idea'
+  | 'planning'
+  | 'building'
+  | 'launched'
+
+export type CreatorProject = {
+  id: string
+  title: string
+  progress: number
+  nextMilestone: string
+  status: CreatorProjectStatus
+  xpReward: number
+  daysWorked: number
+  milestonesCompleted: number
+  createdAt: string
+  updatedAt: string
+}
+
+export type CreatorQuestline = {
+  id: 'creator_spark' | 'momentum' | 'builder'
+  title: string
+  description: string
+  reward: string
+  rewardStudioLevel: number
+  completed: boolean
+  completedAt?: string
+}
+
+export type StorybookChapter = {
+  id: string
+  chapterNumber: number
+  title: string
+  body: string
+  createdAt: string
+}
+
+export type CreatorAchievement = {
+  id: string
+  title: string
+  description: string
+  unlocked: boolean
+  unlockedAt?: string
 }
 
 export type JournalEntry = {
@@ -126,6 +180,10 @@ export type DreamUser = {
   dailyCheckIns: DailyCheckIn[]
   progressHistory: ProgressHistoryEntry[]
   waitlistSignups: WaitlistSignup[]
+  creatorProjects: CreatorProject[]
+  creatorQuestlines: CreatorQuestline[]
+  storybookChapters: StorybookChapter[]
+  creatorAchievements: CreatorAchievement[]
   habitLogs: HabitLog[]
   journalEntries: JournalEntry[]
   companionMessages: CompanionMessage[]
