@@ -7,6 +7,7 @@ export const xpRewards: Record<DreamUserAction, number> = {
   complete_focus_session: 20,
   complete_goal: 20,
   complete_habit: 10,
+  complete_daily_check_in: 15,
 }
 
 export function getLevel(xp: number) {

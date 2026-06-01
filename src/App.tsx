@@ -10,7 +10,13 @@ import {
 } from './components/Phase2Cards'
 import { activeEra, eras as eraConfigs } from './lib/eras'
 import { completeHabit as evolveHabit } from './lib/worldEvolution'
-import type { DreamUser, DreamUserUpdate, HabitLog } from './models/dreamUser'
+import type {
+  CheckInMood,
+  DailyActionType,
+  DreamUser,
+  DreamUserUpdate,
+  HabitLog,
+} from './models/dreamUser'
 import { createStarterWorldUser } from './models/createStarterWorld'
 import { checkFirstUpgrade, getLevel, xpRewards } from './models/progression'
 import { loadDreamUser, saveDreamUser } from './storage/dreamUserStorage'
@@ -24,6 +30,7 @@ type Era = {
 }
 
 type Tab =
+  | 'Landing'
   | 'Start'
   | 'Home'
   | 'DreamFrame'
@@ -90,6 +97,7 @@ const navItems: Array<[string, Tab]> = [
 ]
 
 const tabSlugs: Record<Tab, string> = {
+  Landing: '',
   Start: 'start',
   Home: 'home',
   DreamFrame: 'dreamframe',
@@ -117,7 +125,7 @@ function getTabFromPath(pathname: string): Tab {
   const trimmedPath = pathname.replace(/\/$/, '')
 
   if (trimmedPath === fallbackPath) {
-    return 'Start'
+    return 'Landing'
   }
 
   const slug = trimmedPath.replace(`${fallbackPath}/`, '').split('/')[0]
@@ -125,11 +133,100 @@ function getTabFromPath(pathname: string): Tab {
   return slugTabs[slug] ?? 'Home'
 }
 
+const dailyActions: Record<
+  DailyActionType,
+  { label: string; xpReward: number; worldEffect: string; icon: string }
+> = {
+  breathe: {
+    label: 'Take three grounding breaths',
+    xpReward: 10,
+    worldEffect: 'the sanctuary air softens',
+    icon: 'self_improvement',
+  },
+  hydrate: {
+    label: 'Drink a full glass of water',
+    xpReward: 10,
+    worldEffect: 'fresh flowers open in the garden',
+    icon: 'water_drop',
+  },
+  focus: {
+    label: 'Do a 10 minute creator sprint',
+    xpReward: 15,
+    worldEffect: 'the studio desk begins to glow',
+    icon: 'timer',
+  },
+  reflect: {
+    label: 'Write one honest sentence',
+    xpReward: 10,
+    worldEffect: 'the observatory clears a patch of sky',
+    icon: 'edit_note',
+  },
+}
+
+function getTodayKey() {
+  return new Date().toISOString().slice(0, 10)
+}
+
+function isYesterday(dateKey?: string) {
+  if (!dateKey) {
+    return false
+  }
+
+  const yesterday = new Date()
+  yesterday.setDate(yesterday.getDate() - 1)
+
+  return dateKey === yesterday.toISOString().slice(0, 10)
+}
+
+function getCompanionGuidance(tab: Tab, user: DreamUser) {
+  if (tab === 'Home') {
+    return user.lastCheckInDate === getTodayKey()
+      ? 'Your ritual is complete for today. Let the win count before you chase the next one.'
+      : 'Start small today. Pick the action that feels possible, then let your world respond.'
+  }
+
+  if (tab === 'DreamFrame') {
+    return 'Choose an era like a direction, not a verdict. Your next action is what makes it real.'
+  }
+
+  if (tab === 'World') {
+    return 'Look for the places that changed recently. Your history is proof that tiny rituals compound.'
+  }
+
+  if (tab === 'CreatorStudio') {
+    return 'A short sprint is enough. The studio gets brighter when you give it focused attention.'
+  }
+
+  if (tab === 'GrowthGarden') {
+    return 'Your garden responds best to repeatable care. Choose the smallest habit you will actually do.'
+  }
+
+  if (tab === 'FutureSelf') {
+    return 'Read this page as evidence. You are not starting from zero anymore.'
+  }
+
+  if (tab === 'Journal') {
+    return 'One honest sentence is a complete reflection. Clarity grows when you return tomorrow.'
+  }
+
+  if (tab === 'Me') {
+    return 'Share the progress, not perfection. The ritual is working because you keep returning.'
+  }
+
+  return 'DreamFrame turns one small daily action into visible progress.'
+}
+
+function getTotalXP(user: DreamUser) {
+  return user.creatorXP + user.wellnessXP + user.reflectionXP + user.growthXP
+}
+
 function App() {
   const [user, setUser] = useState<DreamUser>(loadDreamUser)
   const [journalDraft, setJournalDraft] = useState('')
   const [ritualPulse, setRitualPulse] = useState(false)
   const [showUpgradeModal, setShowUpgradeModal] = useState(false)
+  const [waitlistEmail, setWaitlistEmail] = useState('')
+  const [waitlistJoined, setWaitlistJoined] = useState(false)
   const [activeTab, setActiveTab] = useState<Tab>(() =>
     getTabFromPath(window.location.pathname),
   )
@@ -212,6 +309,159 @@ function App() {
         ...currentUser.worldEvents,
       ],
     }))
+  }
+
+  function completeDailyCheckIn({
+    mood,
+    intention,
+    actionType,
+  }: {
+    mood: CheckInMood
+    intention: string
+    actionType: DailyActionType
+  }) {
+    const today = getTodayKey()
+    const action = dailyActions[actionType]
+    const cleanedIntention =
+      intention.trim() || 'I will take one small step and let it count.'
+
+    updateUser((currentUser) => {
+      const existingCheckIn = currentUser.dailyCheckIns.find(
+        (checkIn) => checkIn.date === today,
+      )
+
+      if (existingCheckIn?.completed) {
+        return currentUser
+      }
+
+      const nextStreak = isYesterday(currentUser.lastCheckInDate)
+        ? currentUser.dailyStreak + 1
+        : currentUser.lastCheckInDate === today
+          ? currentUser.dailyStreak || 1
+          : 1
+      const createdAt = new Date().toISOString()
+      const companionNote = `You checked in while feeling ${mood}. ${action.worldEffect}.`
+      const checkIn = {
+        id: `checkin_${Date.now()}`,
+        date: today,
+        mood,
+        intention: cleanedIntention,
+        action: {
+          type: actionType,
+          label: action.label,
+          xpReward: action.xpReward,
+          worldEffect: action.worldEffect,
+          completedAt: createdAt,
+        },
+        completed: true,
+        companionNote,
+        createdAt,
+        completedAt: createdAt,
+      }
+      const progressEntry = {
+        id: `progress_${Date.now()}`,
+        date: today,
+        title: 'Daily ritual complete',
+        detail: cleanedIntention,
+        xpGained: action.xpReward,
+        worldEffect: action.worldEffect,
+        createdAt,
+      }
+      const nextWorld = {
+        ...currentUser.currentWorld,
+        gardenLevel:
+          nextStreak >= 3
+            ? Math.max(currentUser.currentWorld.gardenLevel, 2)
+            : currentUser.currentWorld.gardenLevel,
+        observatoryLevel:
+          actionType === 'reflect'
+            ? Math.max(currentUser.currentWorld.observatoryLevel, 1)
+            : currentUser.currentWorld.observatoryLevel,
+      }
+      const xpUpdate =
+        actionType === 'focus'
+          ? { creatorXP: currentUser.creatorXP + action.xpReward }
+          : actionType === 'reflect'
+            ? { reflectionXP: currentUser.reflectionXP + action.xpReward }
+            : { wellnessXP: currentUser.wellnessXP + action.xpReward }
+
+      return {
+        ...currentUser,
+        ...xpUpdate,
+        currentWorld: nextWorld,
+        dailyStreak: nextStreak,
+        bestDailyStreak: Math.max(currentUser.bestDailyStreak, nextStreak),
+        lastCheckInDate: today,
+        lastActiveAt: createdAt,
+        dailyCheckIns: [
+          checkIn,
+          ...currentUser.dailyCheckIns.filter(
+            (storedCheckIn) => storedCheckIn.date !== today,
+          ),
+        ],
+        progressHistory: [progressEntry, ...currentUser.progressHistory],
+        companionMessages: [
+          {
+            id: `msg_daily_${Date.now()}`,
+            type: 'encouragement',
+            location: 'daily_check_in',
+            message: companionNote,
+            createdAt,
+            read: false,
+          },
+          ...currentUser.companionMessages,
+        ],
+        worldEvents: [
+          {
+            id: `event_daily_${Date.now()}`,
+            type: 'daily_check_in',
+            title: 'Daily ritual complete',
+            message: action.worldEffect,
+            affectedLocation:
+              actionType === 'focus'
+                ? 'creator_studio'
+                : actionType === 'reflect'
+                  ? 'future_self_observatory'
+                  : 'growth_garden',
+            seenByUser: false,
+            createdAt,
+          },
+          ...currentUser.worldEvents,
+        ],
+      }
+    })
+  }
+
+  function joinWaitlist(email: string) {
+    const cleanedEmail = email.trim().toLowerCase()
+
+    if (!cleanedEmail) {
+      return
+    }
+
+    updateUser((currentUser) => {
+      const alreadyJoined = currentUser.waitlistSignups.some(
+        (signup) => signup.email === cleanedEmail,
+      )
+
+      if (alreadyJoined) {
+        return currentUser
+      }
+
+      return {
+        ...currentUser,
+        waitlistSignups: [
+          {
+            id: `waitlist_${Date.now()}`,
+            email: cleanedEmail,
+            createdAt: new Date().toISOString(),
+          },
+          ...currentUser.waitlistSignups,
+        ],
+      }
+    })
+    setWaitlistEmail('')
+    setWaitlistJoined(true)
   }
 
   function completeGoal() {
@@ -299,9 +549,9 @@ function App() {
       <header className="top-nav">
         <button
           className="brand-lockup"
-          onClick={() => navigate('Home')}
+          onClick={() => navigate(activeTab === 'Landing' ? 'Landing' : 'Home')}
           type="button"
-          aria-label="Open Home"
+          aria-label={activeTab === 'Landing' ? 'Open landing page' : 'Open Home'}
         >
           <div className="avatar">
             <img
@@ -311,8 +561,17 @@ function App() {
           </div>
           <h1>DreamFrame</h1>
         </button>
-        <button className="icon-button" type="button" aria-label="Settings">
-          <span className="material-symbols-outlined">settings</span>
+        <button
+          className="icon-button"
+          onClick={() =>
+            activeTab === 'Landing' && navigate(user.onboardingComplete ? 'Home' : 'Start')
+          }
+          type="button"
+          aria-label={activeTab === 'Landing' ? 'Open app' : 'Settings'}
+        >
+          <span className="material-symbols-outlined">
+            {activeTab === 'Landing' ? 'login' : 'settings'}
+          </span>
         </button>
       </header>
 
@@ -325,10 +584,24 @@ function App() {
             exit={{ opacity: 0, y: -10, filter: 'blur(8px)' }}
             transition={{ duration: 0.42, ease: [0.22, 1, 0.36, 1] }}
           >
+            {activeTab === 'Landing' && (
+              <LandingPage
+                email={waitlistEmail}
+                joined={waitlistJoined}
+                onEmailChange={setWaitlistEmail}
+                onJoinWaitlist={joinWaitlist}
+                onOpenApp={() => navigate(user.onboardingComplete ? 'Home' : 'Start')}
+              />
+            )}
             {activeTab === 'Start' && (
               <StartPage user={user} onCreateStarterWorld={createStarterWorld} />
             )}
-            {activeTab === 'Home' && <HomePage user={user} />}
+            {activeTab === 'Home' && (
+              <HomePage
+                user={user}
+                onCompleteDailyCheckIn={completeDailyCheckIn}
+              />
+            )}
             {activeTab === 'DreamFrame' && (
               <DreamFramePage
                 user={user}
@@ -377,29 +650,113 @@ function App() {
                 onNavigate={navigate}
               />
             )}
+            {activeTab !== 'Landing' && activeTab !== 'Start' && (
+              <CompanionGuide message={getCompanionGuidance(activeTab, user)} />
+            )}
           </motion.div>
         </AnimatePresence>
       </main>
 
-      <nav className="bottom-nav" aria-label="Primary navigation">
-        {navItems.map(([icon, label]) => (
-          <a
-            className={label === activeTab ? 'active' : ''}
-            href={getPathForTab(label)}
-            key={label}
-            onClick={(event) => navigate(label, event)}
-            aria-current={label === activeTab ? 'page' : undefined}
-          >
-            <span className="material-symbols-outlined">{icon}</span>
-            <span>{label}</span>
-          </a>
-        ))}
-      </nav>
+      {activeTab !== 'Landing' && (
+        <nav className="bottom-nav" aria-label="Primary navigation">
+          {navItems.map(([icon, label]) => (
+            <a
+              className={label === activeTab ? 'active' : ''}
+              href={getPathForTab(label)}
+              key={label}
+              onClick={(event) => navigate(label, event)}
+              aria-current={label === activeTab ? 'page' : undefined}
+            >
+              <span className="material-symbols-outlined">{icon}</span>
+              <span>{label}</span>
+            </a>
+          ))}
+        </nav>
+      )}
       <UpgradeModal
         open={showUpgradeModal}
         onClose={() => setShowUpgradeModal(false)}
       />
     </div>
+  )
+}
+
+function LandingPage({
+  email,
+  joined,
+  onEmailChange,
+  onJoinWaitlist,
+  onOpenApp,
+}: {
+  email: string
+  joined: boolean
+  onEmailChange: (value: string) => void
+  onJoinWaitlist: (email: string) => void
+  onOpenApp: () => void
+}) {
+  return (
+    <section className="page-view landing-page">
+      <div className="landing-hero">
+        <div className="landing-copy">
+          <p className="page-kicker">DreamFrame</p>
+          <h2>Your daily emotional ritual, made visible.</h2>
+          <p>
+            Check in, complete one small action, and watch a personal world
+            reflect the person you are becoming.
+          </p>
+          <div className="landing-actions">
+            <button className="glow-button" onClick={onOpenApp} type="button">
+              <span className="material-symbols-outlined">auto_fix_high</span>
+              Open Prototype
+            </button>
+          </div>
+          <form
+            className="waitlist-form"
+            onSubmit={(event) => {
+              event.preventDefault()
+              onJoinWaitlist(email)
+            }}
+          >
+            <label htmlFor="waitlist-email">Join the waitlist</label>
+            <div>
+              <input
+                id="waitlist-email"
+                value={email}
+                onChange={(event) => onEmailChange(event.target.value)}
+                placeholder="you@example.com"
+                type="email"
+              />
+              <button className="secondary-button" type="submit">
+                Join
+              </button>
+            </div>
+            {joined && <small>You're on the local prototype waitlist.</small>}
+          </form>
+        </div>
+        <div className="landing-world" aria-label="DreamFrame world preview">
+          <span className="landing-sun"></span>
+          <span className="landing-studio"></span>
+          <span className="landing-garden"></span>
+          <span className="landing-path"></span>
+          <div>
+            <strong>One action today</strong>
+            <p>Studio glows. Garden blooms. Streak continues.</p>
+          </div>
+        </div>
+      </div>
+      <section className="landing-proof" aria-label="DreamFrame ritual steps">
+        {[
+          ['mood', 'Check in honestly'],
+          ['task_alt', 'Complete one small action'],
+          ['public', 'Watch your world respond'],
+        ].map(([icon, label]) => (
+          <article key={label}>
+            <span className="material-symbols-outlined">{icon}</span>
+            <strong>{label}</strong>
+          </article>
+        ))}
+      </section>
+    </section>
   )
 }
 
@@ -435,12 +792,22 @@ function StartPage({
 
 function HomePage({
   user,
+  onCompleteDailyCheckIn,
 }: {
   user: DreamUser
+  onCompleteDailyCheckIn: (input: {
+    mood: CheckInMood
+    intention: string
+    actionType: DailyActionType
+  }) => void
 }) {
   const hour = new Date().getHours()
   const greeting =
     hour < 12 ? 'Good Morning' : hour < 18 ? 'Good Afternoon' : 'Good Evening'
+  const todaysCheckIn = user.dailyCheckIns.find(
+    (checkIn) => checkIn.date === getTodayKey(),
+  )
+  const latestProgress = user.progressHistory[0]
 
   return (
     <section className="page-view home-view">
@@ -449,6 +816,11 @@ function HomePage({
         <h2>
           {greeting}, {user.displayName}.
         </h2>
+        <p className="home-ritual-subtitle">
+          {todaysCheckIn
+            ? "Your world already received today's signal."
+            : 'Begin with one honest check-in and one small action.'}
+        </p>
         {user.companionMessages[0] && (
           <div className="home-companion">
             <CompanionMessageCard message={user.companionMessages[0]} />
@@ -469,6 +841,107 @@ function HomePage({
           </div>
         </div>
       </section>
+      <DailyCheckInCard
+        todaysCheckIn={todaysCheckIn}
+        onCompleteDailyCheckIn={onCompleteDailyCheckIn}
+      />
+      <section className="daily-response-grid">
+        <article className="ritual-response-card">
+          <span>Current Streak</span>
+          <strong>{user.dailyStreak} days</strong>
+          <p>Best streak: {user.bestDailyStreak} days</p>
+        </article>
+        <article className="ritual-response-card">
+          <span>World Response</span>
+          <strong>{latestProgress?.worldEffect ?? 'waiting for today'}</strong>
+          <p>{latestProgress?.detail ?? 'Complete a ritual to change the world.'}</p>
+        </article>
+      </section>
+    </section>
+  )
+}
+
+function DailyCheckInCard({
+  todaysCheckIn,
+  onCompleteDailyCheckIn,
+}: {
+  todaysCheckIn: DreamUser['dailyCheckIns'][number] | undefined
+  onCompleteDailyCheckIn: (input: {
+    mood: CheckInMood
+    intention: string
+    actionType: DailyActionType
+  }) => void
+}) {
+  const [mood, setMood] = useState<CheckInMood>('steady')
+  const [actionType, setActionType] = useState<DailyActionType>('breathe')
+  const [intention, setIntention] = useState('')
+  const moods: Array<{ value: CheckInMood; label: string }> = [
+    { value: 'bright', label: 'Bright' },
+    { value: 'steady', label: 'Steady' },
+    { value: 'tender', label: 'Tender' },
+    { value: 'stuck', label: 'Stuck' },
+  ]
+
+  if (todaysCheckIn) {
+    return (
+      <section className="daily-check-card complete" aria-label="Daily check-in">
+        <div>
+          <span>Daily Check-In Complete</span>
+          <strong>{todaysCheckIn.action.label}</strong>
+          <p>{todaysCheckIn.companionNote}</p>
+        </div>
+        <span className="material-symbols-outlined">verified</span>
+      </section>
+    )
+  }
+
+  return (
+    <section className="daily-check-card" aria-label="Daily check-in">
+      <div className="ritual-card-heading">
+        <span>Daily Check-In</span>
+        <strong>How are you arriving today?</strong>
+      </div>
+      <div className="mood-options" aria-label="Mood options">
+        {moods.map((option) => (
+          <button
+            className={mood === option.value ? 'selected' : ''}
+            key={option.value}
+            onClick={() => setMood(option.value)}
+            type="button"
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
+      <label htmlFor="daily-intention">Today I want to feel...</label>
+      <input
+        id="daily-intention"
+        value={intention}
+        onChange={(event) => setIntention(event.target.value)}
+        placeholder="clear, brave, calm, consistent"
+      />
+      <div className="daily-action-options" aria-label="Small actions">
+        {Object.entries(dailyActions).map(([type, action]) => (
+          <button
+            className={actionType === type ? 'selected' : ''}
+            key={type}
+            onClick={() => setActionType(type as DailyActionType)}
+            type="button"
+          >
+            <span className="material-symbols-outlined">{action.icon}</span>
+            <strong>{action.label}</strong>
+            <small>{action.worldEffect}</small>
+          </button>
+        ))}
+      </div>
+      <button
+        className="glow-button"
+        onClick={() => onCompleteDailyCheckIn({ mood, intention, actionType })}
+        type="button"
+      >
+        <span className="material-symbols-outlined">task_alt</span>
+        Complete Today's Ritual
+      </button>
     </section>
   )
 }
@@ -1103,6 +1576,8 @@ function MePage({
         <InfoPanel title={`Reflection Level ${getLevel(user.reflectionXP)}`} body={`${user.reflectionXP} XP`} />
         <InfoPanel title={`Growth Level ${getLevel(user.growthXP)}`} body={`${user.growthXP} XP`} />
       </div>
+      <ShareProgressCard user={user} />
+      <ProgressHistoryList user={user} />
       <button className="glow-button inline-action" onClick={onCompleteHabit} type="button">
         <span className="material-symbols-outlined">local_florist</span>
         Complete Habit +10 XP
@@ -1116,6 +1591,82 @@ function MePage({
         Back Home
       </button>
     </section>
+  )
+}
+
+function ShareProgressCard({ user }: { user: DreamUser }) {
+  const [copied, setCopied] = useState(false)
+  const shareText = `DreamFrame progress: ${user.dailyStreak} day streak, World Level ${user.worldLevel}, ${getTotalXP(user)} total XP. Today's world: ${user.progressHistory[0]?.worldEffect ?? 'ready for a ritual'}.`
+
+  async function shareProgress() {
+    if (navigator.share) {
+      await navigator.share({
+        title: 'My DreamFrame Progress',
+        text: shareText,
+      })
+      return
+    }
+
+    await navigator.clipboard.writeText(shareText)
+    setCopied(true)
+    window.setTimeout(() => setCopied(false), 1800)
+  }
+
+  return (
+    <section className="share-progress-card" aria-label="Shareable progress card">
+      <div>
+        <span>Shareable Progress Card</span>
+        <strong>{user.dailyStreak} day ritual streak</strong>
+        <p>World Level {user.worldLevel} / {getTotalXP(user)} total XP</p>
+      </div>
+      <div className="share-card-preview">
+        <span>DreamFrame</span>
+        <strong>{user.currentEra}</strong>
+        <p>{user.progressHistory[0]?.worldEffect ?? 'a new ritual is waiting'}</p>
+      </div>
+      <button className="secondary-button compact-action" onClick={shareProgress} type="button">
+        <span className="material-symbols-outlined">ios_share</span>
+        {copied ? 'Copied' : 'Share Progress'}
+      </button>
+    </section>
+  )
+}
+
+function ProgressHistoryList({ user }: { user: DreamUser }) {
+  const entries = user.progressHistory.slice(0, 6)
+
+  return (
+    <section className="progress-history-card" aria-label="Progress history">
+      <div className="ritual-card-heading">
+        <span>Progress History</span>
+        <strong>What your rituals changed</strong>
+      </div>
+      {entries.length > 0 ? (
+        <ol>
+          {entries.map((entry) => (
+            <li key={entry.id}>
+              <time>{entry.date}</time>
+              <div>
+                <strong>{entry.title}</strong>
+                <p>{entry.worldEffect}</p>
+              </div>
+              <span>+{entry.xpGained} XP</span>
+            </li>
+          ))}
+        </ol>
+      ) : (
+        <p className="empty-history">Complete a daily ritual to start your progress history.</p>
+      )}
+    </section>
+  )
+}
+
+function CompanionGuide({ message }: { message: string }) {
+  return (
+    <aside className="companion-guide" aria-label="Companion guidance">
+      <span className="material-symbols-outlined">favorite</span>
+      <p>{message}</p>
+    </aside>
   )
 }
 

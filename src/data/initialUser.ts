@@ -35,7 +35,13 @@ export const initialUser: DreamUser = {
   firstReflectionComplete: false,
   firstFocusSessionComplete: false,
   firstGoalComplete: false,
+  dailyStreak: 0,
+  bestDailyStreak: 0,
+  lastCheckInDate: undefined,
   goals: [],
+  dailyCheckIns: [],
+  progressHistory: [],
+  waitlistSignups: [],
   habitLogs: [],
   journalEntries: [],
   companionMessages: [

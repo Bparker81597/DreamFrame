@@ -146,6 +146,13 @@
   line-height: 0.98;
 }
 
+.home-ritual-subtitle {
+  max-width: 620px;
+  margin: 18px auto 0;
+  color: rgba(73, 68, 84, 0.76);
+  font-size: 1.08rem;
+}
+
 .home-stats {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -203,6 +210,458 @@
   background: rgba(255, 255, 255, 0.48);
   box-shadow: 0 18px 40px rgba(107, 56, 212, 0.1);
   backdrop-filter: blur(18px);
+}
+
+.landing-page {
+  display: grid;
+  gap: 34px;
+}
+
+.landing-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(360px, 1.1fr);
+  align-items: center;
+  gap: clamp(28px, 5vw, 70px);
+  min-height: calc(100dvh - 190px);
+}
+
+.landing-copy {
+  display: grid;
+  gap: 18px;
+}
+
+.landing-copy h2 {
+  margin: 0;
+  color: #1c1c19;
+  font-family: 'EB Garamond', Georgia, serif;
+  font-size: clamp(3.5rem, 8vw, 6.8rem);
+  font-weight: 500;
+  line-height: 0.94;
+}
+
+.landing-copy p {
+  max-width: 620px;
+  margin: 0;
+  color: #494454;
+  font-size: 1.08rem;
+}
+
+.landing-actions {
+  width: min(100%, 320px);
+}
+
+.waitlist-form {
+  display: grid;
+  gap: 10px;
+  width: min(100%, 520px);
+  margin-top: 10px;
+}
+
+.waitlist-form label,
+.daily-check-card label,
+.ritual-card-heading span,
+.ritual-response-card span,
+.share-progress-card span,
+.progress-history-card span,
+.progress-history-card time {
+  color: rgba(73, 68, 84, 0.68);
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.waitlist-form > div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 132px;
+  gap: 10px;
+}
+
+.waitlist-form input,
+.daily-check-card input {
+  min-height: 58px;
+  border: 1px solid rgba(107, 56, 212, 0.18);
+  border-radius: 999px;
+  padding: 0 18px;
+  color: #1c1c19;
+  font: inherit;
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.waitlist-form .secondary-button {
+  min-height: 58px;
+  padding: 12px 18px;
+}
+
+.waitlist-form small {
+  color: #245c58;
+  font-weight: 800;
+}
+
+.landing-world {
+  position: relative;
+  min-height: 560px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.58);
+  border-radius: 36px;
+  padding: 32px;
+  background:
+    linear-gradient(180deg, rgba(255, 249, 244, 0.82), rgba(222, 247, 235, 0.68)),
+    linear-gradient(90deg, rgba(107, 56, 212, 0.08) 1px, transparent 1px);
+  background-size: auto, 52px 52px;
+  box-shadow: 0 24px 54px rgba(107, 56, 212, 0.13);
+  backdrop-filter: blur(18px);
+}
+
+.landing-sun,
+.landing-studio,
+.landing-garden,
+.landing-path {
+  position: absolute;
+  display: block;
+}
+
+.landing-sun {
+  top: 42px;
+  right: 54px;
+  width: 118px;
+  height: 118px;
+  border-radius: 999px;
+  background: #fbbf24;
+  box-shadow: 0 0 52px rgba(251, 191, 36, 0.34);
+}
+
+.landing-studio {
+  right: 110px;
+  bottom: 154px;
+  width: 220px;
+  height: 170px;
+  border-radius: 24px 24px 12px 12px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.74), rgba(132, 85, 239, 0.22)),
+    #fff;
+  box-shadow: 0 22px 38px rgba(73, 68, 84, 0.14);
+}
+
+.landing-studio::before {
+  position: absolute;
+  inset: 34px 48px auto;
+  height: 58px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #8455ef, #fe7488);
+  content: '';
+}
+
+.landing-garden {
+  left: 44px;
+  bottom: 104px;
+  width: 260px;
+  height: 130px;
+  border-radius: 55% 45% 20px 20px;
+  background:
+    radial-gradient(circle at 28% 42%, #fe7488 0 8%, transparent 9%),
+    radial-gradient(circle at 54% 35%, #fbbf24 0 7%, transparent 8%),
+    linear-gradient(180deg, rgba(137, 205, 194, 0.72), rgba(36, 92, 88, 0.34));
+}
+
+.landing-path {
+  right: 270px;
+  bottom: -40px;
+  width: 150px;
+  height: 310px;
+  border-radius: 999px 999px 0 0;
+  background: rgba(255, 218, 220, 0.74);
+  transform: rotate(18deg);
+}
+
+.landing-world > div {
+  position: absolute;
+  left: 32px;
+  right: 32px;
+  bottom: 30px;
+}
+
+.landing-world strong {
+  color: #245c58;
+  font-family: 'EB Garamond', Georgia, serif;
+  font-size: 2.6rem;
+  font-weight: 500;
+}
+
+.landing-world p {
+  margin: 8px 0 0;
+  color: #494454;
+}
+
+.landing-proof {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.landing-proof article {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  border-radius: 24px;
+  padding: 18px;
+  background: rgba(255, 255, 255, 0.5);
+  box-shadow: 0 18px 40px rgba(107, 56, 212, 0.1);
+}
+
+.landing-proof .material-symbols-outlined {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 999px;
+  color: #fff;
+  background: #245c58;
+}
+
+.landing-proof strong {
+  color: #1c1c19;
+}
+
+.daily-check-card,
+.ritual-response-card,
+.share-progress-card,
+.progress-history-card,
+.companion-guide {
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.5);
+  box-shadow: 0 18px 40px rgba(107, 56, 212, 0.1);
+  backdrop-filter: blur(18px);
+}
+
+.daily-check-card {
+  display: grid;
+  gap: 18px;
+  width: min(100%, 860px);
+  margin: 0 auto 22px;
+  padding: 28px;
+}
+
+.daily-check-card.complete {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.78), rgba(222, 247, 235, 0.6)),
+    rgba(255, 255, 255, 0.5);
+}
+
+.daily-check-card.complete .material-symbols-outlined {
+  color: #245c58;
+  font-size: 42px;
+  font-variation-settings: 'FILL' 1;
+}
+
+.ritual-card-heading,
+.daily-check-card.complete div {
+  display: grid;
+  gap: 8px;
+}
+
+.ritual-card-heading strong,
+.daily-check-card.complete strong,
+.ritual-response-card strong,
+.share-progress-card strong,
+.progress-history-card strong {
+  color: #6b38d4;
+  font-family: 'EB Garamond', Georgia, serif;
+  font-size: clamp(1.6rem, 4vw, 2.2rem);
+  font-weight: 500;
+  line-height: 1.08;
+}
+
+.daily-check-card p,
+.ritual-response-card p,
+.share-progress-card p,
+.progress-history-card p,
+.companion-guide p {
+  margin: 0;
+  color: #494454;
+}
+
+.mood-options,
+.daily-action-options {
+  display: grid;
+  gap: 10px;
+}
+
+.mood-options {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.mood-options button,
+.daily-action-options button {
+  border: 1px solid rgba(107, 56, 212, 0.16);
+  color: #494454;
+  font: inherit;
+  background: rgba(255, 255, 255, 0.62);
+  cursor: pointer;
+  transition:
+    background 220ms ease,
+    transform 220ms ease;
+}
+
+.mood-options button {
+  min-height: 48px;
+  border-radius: 999px;
+  font-weight: 800;
+}
+
+.mood-options button.selected,
+.daily-action-options button.selected {
+  border-color: rgba(107, 56, 212, 0.48);
+  color: #6b38d4;
+  background: rgba(233, 221, 255, 0.72);
+}
+
+.daily-action-options {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.daily-action-options button {
+  display: grid;
+  gap: 8px;
+  min-height: 156px;
+  border-radius: 22px;
+  padding: 18px;
+  text-align: left;
+}
+
+.daily-action-options button:hover,
+.mood-options button:hover {
+  transform: translateY(-3px);
+}
+
+.daily-action-options .material-symbols-outlined {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  color: #fff;
+  background: #6b38d4;
+}
+
+.daily-action-options strong {
+  color: #1c1c19;
+  line-height: 1.15;
+}
+
+.daily-action-options small {
+  color: rgba(73, 68, 84, 0.68);
+  font-size: 0.82rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.daily-response-grid {
+  display: grid;
+  grid-template-columns: 0.7fr 1.3fr;
+  gap: 18px;
+  width: min(100%, 860px);
+  margin: 0 auto;
+}
+
+.ritual-response-card {
+  display: grid;
+  gap: 8px;
+  padding: 24px;
+}
+
+.share-progress-card {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(240px, 1fr) auto;
+  align-items: center;
+  gap: 18px;
+  width: min(100%, 920px);
+  margin: 0 auto;
+  padding: 26px;
+}
+
+.share-card-preview {
+  display: grid;
+  gap: 6px;
+  min-height: 170px;
+  border-radius: 24px;
+  padding: 20px;
+  background:
+    radial-gradient(circle at 82% 18%, rgba(251, 191, 36, 0.28), transparent 30%),
+    linear-gradient(135deg, rgba(222, 247, 235, 0.88), rgba(233, 221, 255, 0.78));
+}
+
+.share-card-preview strong {
+  align-self: center;
+  font-size: 2rem;
+}
+
+.progress-history-card {
+  display: grid;
+  gap: 18px;
+  width: min(100%, 920px);
+  margin: 0 auto;
+  padding: 26px;
+}
+
+.progress-history-card ol {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.progress-history-card li {
+  display: grid;
+  grid-template-columns: 116px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  border-radius: 18px;
+  padding: 14px;
+  background: rgba(255, 255, 255, 0.54);
+}
+
+.progress-history-card li > span {
+  color: #245c58;
+}
+
+.progress-history-card li strong {
+  font-size: 1.25rem;
+}
+
+.empty-history {
+  padding: 18px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.54);
+}
+
+.companion-guide {
+  position: fixed;
+  right: clamp(16px, 3vw, 34px);
+  bottom: 116px;
+  z-index: 18;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  width: min(360px, calc(100% - 32px));
+  padding: 16px;
+}
+
+.companion-guide .material-symbols-outlined {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 999px;
+  color: #fff;
+  background: #fe7488;
+  font-variation-settings: 'FILL' 1;
 }
 
 .info-panel h3 {
@@ -1437,6 +1896,19 @@
 }
 
 @media (max-width: 980px) {
+  .landing-hero,
+  .share-progress-card {
+    grid-template-columns: 1fr;
+  }
+
+  .landing-hero {
+    min-height: auto;
+  }
+
+  .landing-world {
+    min-height: 460px;
+  }
+
   .era-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -1446,7 +1918,8 @@
   .quick-access-grid,
   .world-map-grid,
   .habit-grid,
-  .xp-grid {
+  .xp-grid,
+  .daily-action-options {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
@@ -1463,6 +1936,50 @@
 
   .intro-panel h2 {
     font-size: 3rem;
+  }
+
+  .landing-copy h2 {
+    font-size: 3.4rem;
+  }
+
+  .landing-world {
+    min-height: 380px;
+  }
+
+  .landing-studio {
+    right: 34px;
+    bottom: 126px;
+    width: 170px;
+  }
+
+  .landing-garden {
+    left: 18px;
+    width: 190px;
+  }
+
+  .landing-proof,
+  .waitlist-form > div,
+  .daily-response-grid,
+  .mood-options,
+  .daily-action-options,
+  .progress-history-card li {
+    grid-template-columns: 1fr;
+  }
+
+  .daily-check-card,
+  .share-progress-card,
+  .progress-history-card {
+    padding: 22px;
+  }
+
+  .daily-check-card.complete {
+    grid-template-columns: 1fr;
+  }
+
+  .companion-guide {
+    position: static;
+    width: min(100%, 860px);
+    margin: 28px auto 0;
   }
 
   .era-grid {

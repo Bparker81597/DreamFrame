@@ -1,6 +1,6 @@
 export type WorldEvent = {
   id: string
-  type: 'upgrade_unlocked' | 'companion_message'
+  type: 'upgrade_unlocked' | 'companion_message' | 'daily_check_in'
   title: string
   message: string
   affectedLocation?: string
@@ -27,6 +27,46 @@ export type HabitLog = {
   xpReward: number
   gardenEffect: string
   loggedAt: string
+}
+
+export type CheckInMood = 'bright' | 'steady' | 'tender' | 'stuck'
+
+export type DailyActionType = 'breathe' | 'hydrate' | 'focus' | 'reflect'
+
+export type DailyAction = {
+  type: DailyActionType
+  label: string
+  xpReward: number
+  worldEffect: string
+  completedAt?: string
+}
+
+export type DailyCheckIn = {
+  id: string
+  date: string
+  mood: CheckInMood
+  intention: string
+  action: DailyAction
+  completed: boolean
+  companionNote: string
+  createdAt: string
+  completedAt?: string
+}
+
+export type ProgressHistoryEntry = {
+  id: string
+  date: string
+  title: string
+  detail: string
+  xpGained: number
+  worldEffect: string
+  createdAt: string
+}
+
+export type WaitlistSignup = {
+  id: string
+  email: string
+  createdAt: string
 }
 
 export type JournalEntry = {
@@ -79,7 +119,13 @@ export type DreamUser = {
   firstReflectionComplete: boolean
   firstFocusSessionComplete: boolean
   firstGoalComplete: boolean
+  dailyStreak: number
+  bestDailyStreak: number
+  lastCheckInDate?: string
   goals: Goal[]
+  dailyCheckIns: DailyCheckIn[]
+  progressHistory: ProgressHistoryEntry[]
+  waitlistSignups: WaitlistSignup[]
   habitLogs: HabitLog[]
   journalEntries: JournalEntry[]
   companionMessages: CompanionMessage[]
@@ -106,6 +152,8 @@ export interface UserProfile {
   firstFocusSessionComplete: boolean
   firstGoalComplete: boolean
   firstUpgradeUnlocked: boolean
+  dailyStreak: number
+  lastCheckInDate?: string
   studioLevel: number
   companionMessages?: CompanionMessage[]
 }
@@ -115,6 +163,7 @@ export type DreamUserAction =
   | 'complete_focus_session'
   | 'complete_goal'
   | 'complete_habit'
+  | 'complete_daily_check_in'
 
 export type DreamUserUpdate = (currentUser: DreamUser) => DreamUser
 
@@ -145,6 +194,8 @@ export function toUserProfile(user: DreamUser): UserProfile {
     firstFocusSessionComplete: user.firstFocusSessionComplete,
     firstGoalComplete: user.firstGoalComplete,
     firstUpgradeUnlocked: user.firstUpgradeUnlocked,
+    dailyStreak: user.dailyStreak,
+    lastCheckInDate: user.lastCheckInDate,
     studioLevel: user.currentWorld.studioLevel,
     companionMessages: user.companionMessages,
   }

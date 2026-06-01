@@ -22,6 +22,11 @@ export function loadDreamUser() {
         ...parsedUser.currentWorld,
       },
       goals: parsedUser.goals ?? initialUser.goals,
+      dailyCheckIns: parsedUser.dailyCheckIns ?? initialUser.dailyCheckIns,
+      progressHistory:
+        parsedUser.progressHistory ?? initialUser.progressHistory,
+      waitlistSignups:
+        parsedUser.waitlistSignups ?? initialUser.waitlistSignups,
       habitLogs: parsedUser.habitLogs ?? initialUser.habitLogs,
       journalEntries: parsedUser.journalEntries ?? initialUser.journalEntries,
       companionMessages:

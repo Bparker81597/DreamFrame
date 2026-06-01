@@ -37,7 +37,13 @@ export function createStarterWorldUser(input: CreateStarterUserInput): DreamUser
     firstReflectionComplete: false,
     firstFocusSessionComplete: false,
     firstGoalComplete: false,
+    dailyStreak: 0,
+    bestDailyStreak: 0,
+    lastCheckInDate: undefined,
     goals: [],
+    dailyCheckIns: [],
+    progressHistory: [],
+    waitlistSignups: initialUser.waitlistSignups,
     habitLogs: [],
     journalEntries: [],
     companionMessages: [
