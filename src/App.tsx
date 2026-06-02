@@ -8,11 +8,22 @@ import {
   WorldLocationCard,
   XPBar,
 } from './components/Phase2Cards'
+import { AvatarGenerator } from '../components/avatar/AvatarGenerator'
 import { activeEra, eras as eraConfigs } from './lib/eras'
 import { completeHabit as evolveHabit } from './lib/worldEvolution'
 import type {
+  DreamFrameBetaAvatarType,
+  GeneratedAvatarResult,
+} from '../types/avatar'
+import type {
+  AvatarCreatorType,
+  AvatarGenerationState,
+  AvatarMood,
+  AvatarPose,
+  AvatarStateType,
   CheckInMood,
   CreatorProject,
+  DreamAvatar,
   DailyActionType,
   DreamUser,
   DreamUserUpdate,
@@ -39,6 +50,7 @@ type Tab =
   | 'CreatorStudio'
   | 'GrowthGarden'
   | 'FutureSelf'
+  | 'Avatar'
   | 'Companion'
   | 'Journal'
   | 'Me'
@@ -92,6 +104,7 @@ const navItems: Array<[string, Tab]> = [
   ['home', 'Home'],
   ['filter_frames', 'DreamFrame'],
   ['public', 'World'],
+  ['face', 'Avatar'],
   ['favorite', 'Companion'],
   ['auto_stories', 'Journal'],
   ['person', 'Me'],
@@ -106,6 +119,7 @@ const tabSlugs: Record<Tab, string> = {
   CreatorStudio: 'creator-studio',
   GrowthGarden: 'growth-garden',
   FutureSelf: 'future-self',
+  Avatar: 'avatar',
   Companion: 'companion',
   Journal: 'journal',
   Me: 'me',
@@ -203,6 +217,174 @@ const futureCreatorMessages = [
   'Momentum compounds.',
   'The work becomes visible when you return to it.',
 ]
+
+const creatorIdentityOptions: Array<{
+  type: AvatarCreatorType
+  label: string
+  icon: string
+  item: string
+}> = [
+  { type: 'app_builder', label: 'App Builder', icon: 'code', item: 'developer laptop' },
+  { type: 'artist', label: 'Artist', icon: 'palette', item: 'sketch wall' },
+  { type: 'music_creator', label: 'Music Creator', icon: 'music_note', item: 'studio headphones' },
+  { type: 'writer', label: 'Writer', icon: 'edit_note', item: 'writing journal' },
+  { type: 'game_developer', label: 'Game Developer', icon: 'sports_esports', item: 'prototype console' },
+  { type: 'entrepreneur', label: 'Entrepreneur', icon: 'rocket_launch', item: 'launch board' },
+]
+
+const avatarArtDirectionPrompt =
+  'Create a personal, human, hand-drawn DreamFrame avatar inspired by the uploaded sketchbook character reference. Use loose black sketch lines, visible pencil and ink texture, slightly imperfect artistic linework, soft warm shading, expressive hand-drawn eyes, anime/comic lifestyle illustration, fashion sketch energy, hoodie/streetwear/cozy creator outfit options, and dynamic creator poses. Preserve recognizable facial features, realistic skin tone, hairstyle, outfit vibe, and personality from the uploaded selfie. Export the generated character as a transparent PNG cutout or clean white-background cutout with no square box, no sticker border, and no surrounding icon frame.'
+
+const avatarStyleReferencePrompt =
+  'Use the reference image only for visual language: messy sketchbook character sheet energy, semi-realistic current-self drawings, cute chibi mini-me doodles, expressive creator portraits, handwritten note accents, crowns, stars, hearts, laptop, journal, coffee cup, headphones, cozy tech lifestyle, and warm future-self growth energy. Do not copy the reference person, name, text, brands, logos, or exact outfit.'
+
+const avatarNegativePrompt =
+  'Do not generate a generic AI avatar, 3D model, Bitmoji style, boxed sticker, plastic cartoon, app mascot, corporate illustration, cube-shaped avatar, blocky body, robotic avatar, generic female character, overly polished AI portrait, thick sticker outline, blank expression, fantasy elf, anime cosplay, square icon, or character trapped inside a box.'
+
+const avatarStateTemplates: Array<{
+  type: AvatarStateType
+  label: string
+  prompt: string
+  mood: AvatarMood
+  pose: AvatarPose
+  level: number
+  compact?: boolean
+  future?: boolean
+}> = [
+  {
+    type: 'current_self',
+    label: 'Current Self Avatar',
+    prompt: 'full-body semi-realistic sketchbook anime/comic version of the user; recognizable face, skin tone, hairstyle, outfit vibe, and personality; cozy creator outfit; transparent PNG cutout; no square box',
+    mood: 'focused',
+    pose: 'standing',
+    level: 1,
+  },
+  {
+    type: 'future_self',
+    label: 'Future Self Avatar',
+    prompt: 'more confident evolved future self; upgraded outfit, stronger posture, subtle creator and luxury details, glowing future-self energy; transparent PNG cutout; no square box',
+    mood: 'motivated',
+    pose: 'future_facing',
+    level: 5,
+    future: true,
+  },
+  {
+    type: 'chibi_companion',
+    label: 'Chibi Self Avatar',
+    prompt: 'mini me inside my DreamFrame world; hand-drawn chibi doodle with oversized head, expressive eyes, tiny body, cozy outfit, laptop, notebook, coffee, headphones, crowns, stars, and hearts; not a 3D mascot; transparent PNG cutout; no sticker border',
+    mood: 'inspired',
+    pose: 'standing',
+    level: 2,
+    compact: true,
+  },
+]
+
+function createAvatarGenerationStates(
+  creatorType: AvatarCreatorType,
+  hasStyleReference = true,
+): AvatarGenerationState[] {
+  const identity =
+    creatorIdentityOptions.find((option) => option.type === creatorType) ??
+    creatorIdentityOptions[0]
+  const referenceInstruction = hasStyleReference
+    ? ` Style reference instruction: ${avatarStyleReferencePrompt}`
+    : ''
+
+  return avatarStateTemplates.map((state) => ({
+    type: state.type,
+    label: state.label,
+    prompt: `${avatarArtDirectionPrompt}${referenceInstruction} Creator identity: ${identity.label}. State: ${state.prompt}`,
+    imageUrl: '',
+    transparentBackground: true,
+  }))
+}
+
+const avatarLevels = [
+  {
+    level: 1,
+    title: 'Starter Creator',
+    outfit: 'cozy creator hoodie',
+    pose: 'standing' as AvatarPose,
+    unlocks: ['hoodie', 'laptop', 'simple pose'],
+  },
+  {
+    level: 2,
+    title: 'Focused Creator',
+    outfit: 'fashionable studio layers',
+    pose: 'working' as AvatarPose,
+    unlocks: ['creator mug', 'notebook', 'better outfit'],
+  },
+  {
+    level: 3,
+    title: 'Builder',
+    outfit: 'sketchbook creator fit',
+    pose: 'working' as AvatarPose,
+    unlocks: ['custom workspace gear', 'confidence pose'],
+  },
+  {
+    level: 4,
+    title: 'Visionary',
+    outfit: 'polished future-self look',
+    pose: 'future_facing' as AvatarPose,
+    unlocks: ['creator wall', 'premium aesthetic'],
+  },
+  {
+    level: 5,
+    title: 'Dream Self',
+    outfit: 'signature style',
+    pose: 'future_facing' as AvatarPose,
+    unlocks: ['signature style', 'dream environment'],
+  },
+]
+
+const generatedAvatarTypeToStateType: Record<
+  DreamFrameBetaAvatarType,
+  AvatarStateType
+> = {
+  currentSelfAvatar: 'current_self',
+  chibiCompanionAvatar: 'chibi_companion',
+  futureSelfAvatar: 'future_self',
+}
+
+function getAvatarLevelConfig(level: number) {
+  return avatarLevels[Math.min(Math.max(level, 1), 5) - 1]
+}
+
+function mapCheckInMoodToAvatarMood(mood: CheckInMood): AvatarMood {
+  if (mood === 'inspired' || mood === 'bright') {
+    return 'inspired'
+  }
+
+  if (mood === 'tired' || mood === 'tender') {
+    return 'tired'
+  }
+
+  if (mood === 'calm' || mood === 'steady') {
+    return 'calm'
+  }
+
+  if (mood === 'motivated') {
+    return 'motivated'
+  }
+
+  return 'focused'
+}
+
+function getPoseForMood(mood: AvatarMood): AvatarPose {
+  if (mood === 'inspired') {
+    return 'sketching'
+  }
+
+  if (mood === 'tired') {
+    return 'relaxed'
+  }
+
+  if (mood === 'calm') {
+    return 'journaling'
+  }
+
+  return 'working'
+}
 
 function getStudioLevelConfig(level: number) {
   return creatorStudioLevels[Math.min(Math.max(level, 1), 5) - 1]
@@ -329,12 +511,31 @@ function refreshCreatorEraProgress(user: DreamUser): DreamUser {
         ...nextUser.storybookChapters,
       ]
     : nextUser.storybookChapters
+  const nextAvatarLevel = Math.min(
+    5,
+    Math.max(nextUser.avatar.level, nextUser.creatorLevel, nextStudioLevel),
+  )
+  const nextAvatarConfig = getAvatarLevelConfig(nextAvatarLevel)
+  const nextUnlockedItems = Array.from(
+    new Set([...nextUser.avatar.unlockedItems, ...nextAvatarConfig.unlocks]),
+  )
 
   return {
     ...nextUser,
     creatorQuestlines,
     creatorAchievements,
     storybookChapters: nextStorybookChapters,
+    avatar: {
+      ...nextUser.avatar,
+      level: nextAvatarLevel,
+      currentOutfit: nextAvatarConfig.outfit,
+      currentPose:
+        nextUser.avatar.currentPose === 'standing'
+          ? nextAvatarConfig.pose
+          : nextUser.avatar.currentPose,
+      unlockedItems: nextUnlockedItems,
+      updatedAt: new Date().toISOString(),
+    },
     currentWorld: {
       ...nextUser.currentWorld,
       studioLevel: nextStudioLevel,
@@ -383,6 +584,10 @@ function getCompanionGuidance(tab: Tab, user: DreamUser) {
 
   if (tab === 'FutureSelf') {
     return 'Read this page as evidence. You are not starting from zero anymore.'
+  }
+
+  if (tab === 'Avatar') {
+    return 'This is you inside DreamFrame: current self becoming future creator self through small visible upgrades.'
   }
 
   if (tab === 'Journal') {
@@ -549,6 +754,7 @@ function App() {
           : 1
       const createdAt = new Date().toISOString()
       const companionNote = `You checked in while feeling ${mood}. ${action.worldEffect}.`
+      const avatarMood = mapCheckInMoodToAvatarMood(mood)
       const checkIn = {
         id: `checkin_${Date.now()}`,
         date: today,
@@ -596,6 +802,12 @@ function App() {
       return {
         ...currentUser,
         ...xpUpdate,
+        avatar: {
+          ...currentUser.avatar,
+          mood: avatarMood,
+          currentPose: getPoseForMood(avatarMood),
+          updatedAt: createdAt,
+        },
         currentWorld: nextWorld,
         dailyStreak: nextStreak,
         bestDailyStreak: Math.max(currentUser.bestDailyStreak, nextStreak),
@@ -670,6 +882,114 @@ function App() {
     })
     setWaitlistEmail('')
     setWaitlistJoined(true)
+  }
+
+  function completeAvatarOnboarding({
+    selfieImageUrl,
+    fullBodyImageUrl,
+    styleReferenceImageUrl,
+    creatorType,
+  }: {
+    selfieImageUrl: string
+    fullBodyImageUrl: string
+    styleReferenceImageUrl: string
+    creatorType: AvatarCreatorType
+  }) {
+    const identityItem =
+      creatorIdentityOptions.find((option) => option.type === creatorType)?.item ??
+      'creator tool'
+
+    updateUser((currentUser) => ({
+      ...currentUser,
+      creatorType,
+      avatar: {
+        ...currentUser.avatar,
+        style: 'illustrated_self',
+        creatorType,
+        selfieImageUrl,
+        fullBodyImageUrl,
+        styleReferenceImageUrl,
+        avatarImageUrl: selfieImageUrl,
+        futureAvatarImageUrl: '',
+        artDirectionPrompt: avatarArtDirectionPrompt,
+        negativePrompt: avatarNegativePrompt,
+        generatedStates: createAvatarGenerationStates(
+          creatorType,
+          Boolean(styleReferenceImageUrl),
+        ),
+        onboardingComplete: true,
+        unlockedItems: Array.from(
+          new Set([...currentUser.avatar.unlockedItems, identityItem]),
+        ),
+        updatedAt: new Date().toISOString(),
+      },
+      progressHistory: [
+        addProgressEntry(
+          'Avatar created',
+          creatorIdentityOptions.find((option) => option.type === creatorType)
+            ?.label ?? 'Creator',
+          0,
+          'your current self enters the Creator Studio',
+        ),
+        ...currentUser.progressHistory,
+      ],
+      companionMessages: [
+        addCreatorCompanionMessage(
+          'Your avatar is not separate from you. It is the version of you that keeps showing up.',
+        ),
+        ...currentUser.companionMessages,
+      ],
+    }))
+  }
+
+  function updateAvatarMood(mood: AvatarMood) {
+    updateUser((currentUser) => ({
+      ...currentUser,
+      avatar: {
+        ...currentUser.avatar,
+        mood,
+        currentPose: getPoseForMood(mood),
+        updatedAt: new Date().toISOString(),
+      },
+    }))
+  }
+
+  function saveGeneratedAvatar(result: GeneratedAvatarResult) {
+    const stateType = generatedAvatarTypeToStateType[result.avatarType]
+
+    updateUser((currentUser) => {
+      const generatedStates =
+        currentUser.avatar.generatedStates.length > 0
+          ? currentUser.avatar.generatedStates
+          : createAvatarGenerationStates(currentUser.avatar.creatorType)
+      const nextGeneratedStates = generatedStates.map((state) =>
+        state.type === stateType
+          ? {
+              ...state,
+              imageUrl: result.avatarUrl,
+              transparentBackground: true,
+            }
+          : state,
+      )
+
+      return {
+        ...currentUser,
+        avatar: {
+          ...currentUser.avatar,
+          generatedStates: nextGeneratedStates,
+          avatarImageUrl:
+            result.avatarType === 'currentSelfAvatar'
+              ? result.avatarUrl
+              : currentUser.avatar.avatarImageUrl,
+          futureAvatarImageUrl:
+            result.avatarType === 'futureSelfAvatar'
+              ? result.avatarUrl
+              : currentUser.avatar.futureAvatarImageUrl,
+          onboardingComplete: true,
+          updatedAt: new Date().toISOString(),
+        },
+      }
+    })
   }
 
   function completeGoal() {
@@ -922,6 +1242,15 @@ function App() {
             )}
             {activeTab === 'FutureSelf' && (
               <FutureSelfPage user={user} onNavigate={navigate} />
+            )}
+            {activeTab === 'Avatar' && (
+              <AvatarPage
+                user={user}
+                onCompleteAvatarOnboarding={completeAvatarOnboarding}
+                onGeneratedAvatar={saveGeneratedAvatar}
+                onUpdateAvatarMood={updateAvatarMood}
+                onNavigate={navigate}
+              />
             )}
             {activeTab === 'Companion' && (
               <CompanionPage user={user} onNavigate={navigate} />
@@ -1530,6 +1859,7 @@ function CreatorStudioPage({
             <span></span>
           </div>
         </div>
+        <AvatarWorldPresence avatar={user.avatar} location="studio" />
         <div className="studio-level-caption">
           <span>Level {studioLevel}</span>
           <strong>{studioConfig.message}</strong>
@@ -1785,6 +2115,441 @@ function CreatorAchievementWall({ user }: { user: DreamUser }) {
   )
 }
 
+function AvatarPage({
+  user,
+  onCompleteAvatarOnboarding,
+  onGeneratedAvatar,
+  onUpdateAvatarMood,
+  onNavigate,
+}: {
+  user: DreamUser
+  onCompleteAvatarOnboarding: (input: {
+    selfieImageUrl: string
+    fullBodyImageUrl: string
+    styleReferenceImageUrl: string
+    creatorType: AvatarCreatorType
+  }) => void
+  onGeneratedAvatar: (result: GeneratedAvatarResult) => void
+  onUpdateAvatarMood: (mood: AvatarMood) => void
+  onNavigate: (tab: Tab) => void
+}) {
+  return (
+    <section className="page-view detail-view avatar-page">
+      <div className="intro-panel">
+        <p className="page-kicker">Avatar</p>
+        <h2>This is you inside DreamFrame.</h2>
+        <p>
+          Build an illustrated self that preserves your features, creator style,
+          and future-self growth energy.
+        </p>
+      </div>
+
+      {!user.avatar.onboardingComplete ? (
+        <>
+          <AvatarGenerator
+            creatorType={user.avatar.creatorType}
+            onGenerated={onGeneratedAvatar}
+          />
+          <AvatarOnboarding onCompleteAvatarOnboarding={onCompleteAvatarOnboarding} />
+        </>
+      ) : (
+        <>
+          <AvatarGenerator
+            creatorType={user.avatar.creatorType}
+            onGenerated={onGeneratedAvatar}
+          />
+          <AvatarDisplayCard avatar={user.avatar} />
+          <AvatarMoodPanel
+            avatar={user.avatar}
+            onUpdateAvatarMood={onUpdateAvatarMood}
+          />
+          <AvatarProgressionPanel avatar={user.avatar} />
+        </>
+      )}
+
+      <button
+        className="secondary-button inline-action"
+        onClick={() => onNavigate('CreatorStudio')}
+        type="button"
+      >
+        <span className="material-symbols-outlined">computer</span>
+        View in Studio
+      </button>
+    </section>
+  )
+}
+
+function AvatarOnboarding({
+  onCompleteAvatarOnboarding,
+}: {
+  onCompleteAvatarOnboarding: (input: {
+    selfieImageUrl: string
+    fullBodyImageUrl: string
+    styleReferenceImageUrl: string
+    creatorType: AvatarCreatorType
+  }) => void
+}) {
+  const [selfieImageUrl, setSelfieImageUrl] = useState('')
+  const [fullBodyImageUrl, setFullBodyImageUrl] = useState('')
+  const [styleReferenceImageUrl, setStyleReferenceImageUrl] = useState('')
+  const [creatorType, setCreatorType] = useState<AvatarCreatorType>('app_builder')
+  const hasSelfie = Boolean(selfieImageUrl)
+  const hasStyleReference = Boolean(styleReferenceImageUrl)
+
+  function readImageFile(
+    file: File | undefined,
+    onLoad: (value: string) => void,
+  ) {
+    if (!file) {
+      return
+    }
+
+    const reader = new FileReader()
+    reader.onload = () => onLoad(String(reader.result ?? ''))
+    reader.readAsDataURL(file)
+  }
+
+  function usePrototypeSelfie() {
+    setSelfieImageUrl('prototype-avatar')
+  }
+
+  function useDreamFrameReferenceStyle() {
+    setStyleReferenceImageUrl('dreamframe-reference-style')
+  }
+
+  return (
+    <section className="avatar-onboarding" aria-label="Avatar creation flow">
+      <article className="avatar-step">
+        <span>Step 1</span>
+        <strong>Upload selfie</strong>
+        <p>Use a selfie for likeness. Add a style reference to guide the sketchbook character-art look.</p>
+        <div className="avatar-upload-grid">
+          <label>
+            <span className="material-symbols-outlined">add_a_photo</span>
+            {hasSelfie ? 'Selfie Ready' : 'Selfie'}
+            <input
+              accept="image/*"
+              onChange={(event) =>
+                readImageFile(event.target.files?.[0], setSelfieImageUrl)
+              }
+              type="file"
+            />
+          </label>
+          <label>
+            <span className="material-symbols-outlined">accessibility_new</span>
+            {fullBodyImageUrl ? 'Full Body Ready' : 'Full Body'}
+            <input
+              accept="image/*"
+              onChange={(event) =>
+                readImageFile(event.target.files?.[0], setFullBodyImageUrl)
+              }
+              type="file"
+            />
+          </label>
+          <label>
+            <span className="material-symbols-outlined">style</span>
+            {hasStyleReference ? 'Reference Ready' : 'Style Reference'}
+            <input
+              accept="image/*"
+              onChange={(event) =>
+                readImageFile(event.target.files?.[0], setStyleReferenceImageUrl)
+              }
+              type="file"
+            />
+          </label>
+        </div>
+        <div className="avatar-helper-actions">
+          <button
+            className="secondary-button compact-avatar-action"
+            onClick={usePrototypeSelfie}
+            type="button"
+          >
+            <span className="material-symbols-outlined">face</span>
+            Use Prototype Avatar
+          </button>
+          <button
+            className="secondary-button compact-avatar-action"
+            onClick={useDreamFrameReferenceStyle}
+            type="button"
+          >
+            <span className="material-symbols-outlined">brush</span>
+            Use Reference Style
+          </button>
+        </div>
+      </article>
+
+      <article className="avatar-step">
+        <span>Step 2</span>
+        <strong>Illustrated Self</strong>
+        <p>Sketchbook line art, soft expressive eyes, cozy creator style.</p>
+        <AvatarVisual
+          avatar={{
+            style: 'illustrated_self',
+            creatorType,
+            level: 1,
+            mood: 'focused',
+            currentOutfit: 'cozy creator hoodie',
+            currentPose: 'standing',
+            unlockedItems: [],
+            artDirectionPrompt: avatarArtDirectionPrompt,
+            negativePrompt: avatarNegativePrompt,
+            generatedStates: createAvatarGenerationStates(
+              creatorType,
+              hasStyleReference,
+            ),
+            avatarImageUrl: selfieImageUrl,
+            futureAvatarImageUrl: '',
+            selfieImageUrl,
+            fullBodyImageUrl,
+            styleReferenceImageUrl,
+            onboardingComplete: false,
+            updatedAt: new Date().toISOString(),
+          }}
+          label="DreamStyle preview"
+        />
+      </article>
+
+      <article className="avatar-step wide">
+        <span>Step 3</span>
+        <strong>Choose creator identity</strong>
+        <div className="creator-identity-grid">
+          {creatorIdentityOptions.map((option) => (
+            <button
+              className={creatorType === option.type ? 'selected' : ''}
+              key={option.type}
+              onClick={() => setCreatorType(option.type)}
+              type="button"
+            >
+              <span className="material-symbols-outlined">{option.icon}</span>
+              <strong>{option.label}</strong>
+              <small>{option.item}</small>
+            </button>
+          ))}
+        </div>
+      </article>
+
+      <button
+        className="glow-button avatar-create-button"
+        disabled={!hasSelfie}
+        onClick={() =>
+          onCompleteAvatarOnboarding({
+            selfieImageUrl,
+            fullBodyImageUrl,
+            styleReferenceImageUrl,
+            creatorType,
+          })
+        }
+        type="button"
+      >
+        <span className="material-symbols-outlined">auto_fix_high</span>
+        Generate Avatar Set
+      </button>
+    </section>
+  )
+}
+
+function AvatarDisplayCard({ avatar }: { avatar: DreamAvatar }) {
+  const [selectedStateType, setSelectedStateType] =
+    useState<AvatarStateType>('current_self')
+  const states =
+    avatar.generatedStates.length > 0
+      ? avatar.generatedStates
+      : createAvatarGenerationStates(avatar.creatorType)
+  const selectedState =
+    states.find((state) => state.type === selectedStateType) ?? states[0]
+  const selectedTemplate =
+    avatarStateTemplates.find((item) => item.type === selectedState.type) ??
+    avatarStateTemplates[0]
+
+  return (
+    <section className="avatar-display-card" aria-label="Avatar display card">
+      <div className="section-heading-row">
+        <div>
+          <p className="page-kicker">Avatar Card</p>
+          <h3>{selectedState.label}</h3>
+        </div>
+        <span>transparent cutout</span>
+      </div>
+      <div className="avatar-card-stage">
+        {selectedState.imageUrl ? (
+          <img
+            alt={selectedState.label}
+            className="generated-avatar-cutout"
+            src={selectedState.imageUrl}
+          />
+        ) : (
+          <AvatarVisual
+            avatar={{
+              ...avatar,
+              level: Math.max(avatar.level, selectedTemplate.level),
+              mood: selectedTemplate.mood,
+              currentPose: selectedTemplate.pose,
+            }}
+            label={selectedState.label}
+            compact={selectedTemplate.compact}
+            future={selectedTemplate.future}
+            framed={false}
+          />
+        )}
+      </div>
+      <div className="avatar-state-switcher" aria-label="Choose avatar output">
+        {states.map((state) => {
+          return (
+            <button
+              className={state.type === selectedState.type ? 'selected' : ''}
+              key={state.type}
+              onClick={() => setSelectedStateType(state.type)}
+              type="button"
+            >
+              {state.label}
+            </button>
+          )
+        })}
+      </div>
+    </section>
+  )
+}
+
+function AvatarMoodPanel({
+  avatar,
+  onUpdateAvatarMood,
+}: {
+  avatar: DreamAvatar
+  onUpdateAvatarMood: (mood: AvatarMood) => void
+}) {
+  const moods: Array<{ mood: AvatarMood; label: string; detail: string }> = [
+    { mood: 'focused', label: 'Focused', detail: 'working, laptop open' },
+    { mood: 'inspired', label: 'Inspired', detail: 'sketching ideas' },
+    { mood: 'tired', label: 'Tired', detail: 'relaxed, cozy' },
+    { mood: 'calm', label: 'Calm', detail: 'journaling' },
+    { mood: 'motivated', label: 'Motivated', detail: 'ready to build' },
+  ]
+
+  return (
+    <section className="avatar-panel" aria-label="Avatar mood engine">
+      <div className="section-heading-row">
+        <div>
+          <p className="page-kicker">Mood Engine</p>
+          <h3>Check-ins change how you appear.</h3>
+        </div>
+        <span>{avatar.mood}</span>
+      </div>
+      <div className="avatar-mood-grid">
+        {moods.map((option) => (
+          <button
+            className={avatar.mood === option.mood ? 'selected' : ''}
+            key={option.mood}
+            onClick={() => onUpdateAvatarMood(option.mood)}
+            type="button"
+          >
+            <strong>{option.label}</strong>
+            <small>{option.detail}</small>
+          </button>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+function AvatarProgressionPanel({ avatar }: { avatar: DreamAvatar }) {
+  return (
+    <section className="avatar-panel" aria-label="Avatar progression">
+      <div className="section-heading-row">
+        <div>
+          <p className="page-kicker">Progression</p>
+          <h3>Avatar levels 1-5.</h3>
+        </div>
+      </div>
+      <div className="avatar-level-grid">
+        {avatarLevels.map((level) => (
+          <article
+            className={avatar.level >= level.level ? 'avatar-level-card unlocked' : 'avatar-level-card'}
+            key={level.level}
+          >
+            <span>Level {level.level}</span>
+            <strong>{level.title}</strong>
+            <p>{level.unlocks.join(' / ')}</p>
+          </article>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+function AvatarWorldPresence({
+  avatar,
+  location,
+}: {
+  avatar: DreamAvatar
+  location: 'studio' | 'garden' | 'journal' | 'future'
+}) {
+  const locationCopy = {
+    studio: 'Working',
+    garden: 'Exploring',
+    journal: 'Writing',
+    future: 'Looking forward',
+  }
+
+  return (
+    <div className={`avatar-presence ${location}`}>
+      <AvatarVisual
+        avatar={avatar}
+        label={`Avatar ${locationCopy[location]}`}
+        compact
+        framed={false}
+      />
+      <span>{locationCopy[location]}</span>
+    </div>
+  )
+}
+
+function AvatarVisual({
+  avatar,
+  label,
+  compact = false,
+  future = false,
+  framed = true,
+}: {
+  avatar: DreamAvatar
+  label: string
+  compact?: boolean
+  future?: boolean
+  framed?: boolean
+}) {
+  const identity =
+    creatorIdentityOptions.find((option) => option.type === avatar.creatorType) ??
+    creatorIdentityOptions[0]
+  const shouldUseSelfieImage = avatar.selfieImageUrl.startsWith('data:image/')
+
+  return (
+    <div
+      className={`avatar-visual level-${avatar.level} mood-${avatar.mood} pose-${avatar.currentPose} ${compact ? 'compact' : ''} ${future ? 'future' : ''} ${framed ? 'framed' : 'cutout'}`}
+      aria-label={label}
+    >
+      <div className="avatar-environment">
+        <span></span>
+        <span></span>
+      </div>
+      <div className="avatar-body">
+        <div className="avatar-head">
+          {shouldUseSelfieImage ? (
+            <img src={avatar.selfieImageUrl} alt="" />
+          ) : (
+            <span></span>
+          )}
+        </div>
+        <div className="avatar-torso"></div>
+        <div className="avatar-arm left"></div>
+        <div className="avatar-arm right"></div>
+        <div className="avatar-legs"></div>
+      </div>
+      <div className="avatar-tool">
+        <span className="material-symbols-outlined">{identity.icon}</span>
+      </div>
+    </div>
+  )
+}
+
 function FutureSelfPage({
   user,
   onNavigate,
@@ -1826,6 +2591,7 @@ function FutureSelfPage({
       </div>
 
       <div className="future-self-flow">
+        <AvatarWorldPresence avatar={user.avatar} location="future" />
         <motion.article className="future-panel" whileHover={{ y: -5 }}>
           <span>Current Self</span>
           <strong>{user.displayName}</strong>
@@ -1914,6 +2680,7 @@ function GrowthGardenPage({
           <span className="garden-vines"></span>
           <span className="garden-butterflies"></span>
         </div>
+        <AvatarWorldPresence avatar={user.avatar} location="garden" />
         <div>
           <span>Garden Level {user.currentWorld.gardenLevel || 1}</span>
           <strong>{latestHabit?.gardenEffect ?? 'starter garden'}</strong>
@@ -2026,6 +2793,7 @@ function JournalPage({
         </p>
       </div>
       <div className="journal-card">
+        <AvatarWorldPresence avatar={user.avatar} location="journal" />
         <label htmlFor="journal-entry">Why does this dream matter to you?</label>
         <textarea
           id="journal-entry"

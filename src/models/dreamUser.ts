@@ -123,6 +123,61 @@ export type CreatorAchievement = {
   unlockedAt?: string
 }
 
+export type AvatarStyle = 'illustrated_self'
+
+export type AvatarCreatorType =
+  | 'app_builder'
+  | 'artist'
+  | 'music_creator'
+  | 'writer'
+  | 'game_developer'
+  | 'entrepreneur'
+
+export type AvatarMood = 'focused' | 'inspired' | 'tired' | 'calm' | 'motivated'
+
+export type AvatarPose =
+  | 'standing'
+  | 'working'
+  | 'sketching'
+  | 'relaxed'
+  | 'journaling'
+  | 'gardening'
+  | 'celebrating'
+  | 'future_facing'
+
+export type AvatarStateType =
+  | 'current_self'
+  | 'future_self'
+  | 'chibi_companion'
+
+export type AvatarGenerationState = {
+  type: AvatarStateType
+  label: string
+  prompt: string
+  imageUrl: string
+  transparentBackground: boolean
+}
+
+export type DreamAvatar = {
+  style: AvatarStyle
+  creatorType: AvatarCreatorType
+  level: number
+  mood: AvatarMood
+  currentOutfit: string
+  currentPose: AvatarPose
+  unlockedItems: string[]
+  artDirectionPrompt: string
+  negativePrompt: string
+  generatedStates: AvatarGenerationState[]
+  avatarImageUrl: string
+  futureAvatarImageUrl: string
+  selfieImageUrl: string
+  fullBodyImageUrl: string
+  styleReferenceImageUrl: string
+  onboardingComplete: boolean
+  updatedAt: string
+}
+
 export type JournalEntry = {
   id: string
   prompt: string
@@ -184,6 +239,7 @@ export type DreamUser = {
   creatorQuestlines: CreatorQuestline[]
   storybookChapters: StorybookChapter[]
   creatorAchievements: CreatorAchievement[]
+  avatar: DreamAvatar
   habitLogs: HabitLog[]
   journalEntries: JournalEntry[]
   companionMessages: CompanionMessage[]
@@ -213,6 +269,7 @@ export interface UserProfile {
   dailyStreak: number
   lastCheckInDate?: string
   studioLevel: number
+  avatar?: DreamAvatar
   companionMessages?: CompanionMessage[]
 }
 
@@ -255,6 +312,7 @@ export function toUserProfile(user: DreamUser): UserProfile {
     dailyStreak: user.dailyStreak,
     lastCheckInDate: user.lastCheckInDate,
     studioLevel: user.currentWorld.studioLevel,
+    avatar: user.avatar,
     companionMessages: user.companionMessages,
   }
 }

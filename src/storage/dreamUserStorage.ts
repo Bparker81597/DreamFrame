@@ -35,6 +35,10 @@ export function loadDreamUser() {
         parsedUser.storybookChapters ?? initialUser.storybookChapters,
       creatorAchievements:
         parsedUser.creatorAchievements ?? initialUser.creatorAchievements,
+      avatar: {
+        ...initialUser.avatar,
+        ...parsedUser.avatar,
+      },
       habitLogs: parsedUser.habitLogs ?? initialUser.habitLogs,
       journalEntries: parsedUser.journalEntries ?? initialUser.journalEntries,
       companionMessages:

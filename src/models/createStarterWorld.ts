@@ -48,6 +48,11 @@ export function createStarterWorldUser(input: CreateStarterUserInput): DreamUser
     creatorQuestlines: initialUser.creatorQuestlines,
     storybookChapters: initialUser.storybookChapters,
     creatorAchievements: initialUser.creatorAchievements,
+    avatar: {
+      ...initialUser.avatar,
+      creatorType: 'app_builder',
+      updatedAt: now,
+    },
     habitLogs: [],
     journalEntries: [],
     companionMessages: [

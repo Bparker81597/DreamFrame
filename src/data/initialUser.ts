@@ -135,6 +135,27 @@ export const initialUser: DreamUser = {
       unlocked: false,
     },
   ],
+  avatar: {
+    style: 'illustrated_self',
+    creatorType: 'app_builder',
+    level: 1,
+    mood: 'focused',
+    currentOutfit: 'cozy creator hoodie',
+    currentPose: 'standing',
+    unlockedItems: [],
+    artDirectionPrompt:
+      'Create a personal, human, hand-drawn DreamFrame avatar inspired by the uploaded sketchbook character reference. Use loose black sketch lines, visible pencil and ink texture, slightly imperfect artistic linework, soft warm shading, expressive hand-drawn eyes, anime/comic lifestyle illustration, fashion sketch energy, hoodie/streetwear/cozy creator outfit options, and dynamic creator poses. Preserve recognizable facial features, realistic skin tone, hairstyle, outfit vibe, and personality from the uploaded selfie. Export the generated character as a transparent PNG cutout or clean white-background cutout with no square box, no sticker border, and no surrounding icon frame.',
+    negativePrompt:
+      'Do not generate a generic AI avatar, 3D model, Bitmoji style, boxed sticker, plastic cartoon, app mascot, corporate illustration, cube-shaped avatar, blocky body, robotic avatar, generic female character, overly polished AI portrait, thick sticker outline, blank expression, fantasy elf, anime cosplay, square icon, or character trapped inside a box.',
+    generatedStates: [],
+    avatarImageUrl: '',
+    futureAvatarImageUrl: '',
+    selfieImageUrl: '',
+    fullBodyImageUrl: '',
+    styleReferenceImageUrl: '',
+    onboardingComplete: false,
+    updatedAt: now,
+  },
   habitLogs: [],
   journalEntries: [],
   companionMessages: [
