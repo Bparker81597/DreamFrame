@@ -36,11 +36,19 @@ function getDemoAvatarUrl() {
 
 export function AvatarGenerator({
   creatorType = 'app_builder',
+  generationLimit,
+  generationRemaining,
   onGenerated,
+  onGenerationAttempt,
+  onGenerationError,
   styleReferenceStoragePath,
 }: {
   creatorType?: DreamFrameCreatorType
+  generationLimit?: number
+  generationRemaining?: number
   onGenerated?: (result: GeneratedAvatarResult) => void
+  onGenerationAttempt?: () => boolean
+  onGenerationError?: (message: string) => void
   styleReferenceStoragePath?: string
 }) {
   const [avatarType, setAvatarType] =
@@ -69,6 +77,11 @@ export function AvatarGenerator({
       return
     }
 
+    if (onGenerationAttempt && !onGenerationAttempt()) {
+      setError('Beta generation limit reached for today. Use Preview Demo Avatar or reset the limit in Beta Tools.')
+      return
+    }
+
     setError(null)
     setIsGenerating(true)
 
@@ -86,7 +99,10 @@ export function AvatarGenerator({
       setPreviewUrl(generated.avatarUrl)
       onGenerated?.(generated)
     } catch (caughtError) {
-      setError(getAvatarErrorMessage(caughtError))
+      const message = getAvatarErrorMessage(caughtError)
+
+      setError(message)
+      onGenerationError?.(message)
     } finally {
       setIsGenerating(false)
     }
@@ -99,7 +115,11 @@ export function AvatarGenerator({
           <p className="page-kicker">Avatar Generator</p>
           <h3>Draw your DreamSelf.</h3>
         </div>
-        <span>transparent PNG</span>
+        <span>
+          {typeof generationRemaining === 'number' && typeof generationLimit === 'number'
+            ? `${generationRemaining}/${generationLimit} beta generations`
+            : 'transparent PNG'}
+        </span>
       </div>
 
       <label className="avatar-file-input">
@@ -124,7 +144,7 @@ export function AvatarGenerator({
 
       <button
         className="glow-button"
-        disabled={!selfieFile || isGenerating}
+        disabled={!selfieFile || isGenerating || generationRemaining === 0}
         onClick={handleGenerateAvatar}
         type="button"
       >

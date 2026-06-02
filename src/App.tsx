@@ -1,4 +1,12 @@
-import { useEffect, useState, type CSSProperties, type MouseEvent } from 'react'
+import {
+  Component,
+  useEffect,
+  useState,
+  type CSSProperties,
+  type ErrorInfo,
+  type MouseEvent,
+  type ReactNode,
+} from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
   CompanionMessageCard,
@@ -27,6 +35,7 @@ import type {
   DreamFrameMemory,
   DreamAvatar,
   DailyActionType,
+  BetaFeedback,
   DreamUser,
   DreamUserUpdate,
   HabitLog,
@@ -38,7 +47,11 @@ import {
   recalculateLevels,
   xpRewards,
 } from './models/progression'
-import { loadDreamUser, saveDreamUser } from './storage/dreamUserStorage'
+import {
+  clearDreamUser,
+  loadDreamUser,
+  saveDreamUser,
+} from './storage/dreamUserStorage'
 import './App.css'
 
 type Era = {
@@ -936,6 +949,47 @@ function getTotalXP(user: DreamUser) {
   return user.creatorXP + user.wellnessXP + user.reflectionXP + user.growthXP
 }
 
+class DreamFrameErrorBoundary extends Component<
+  {
+    children: ReactNode
+    onError: (error: Error, info: ErrorInfo) => void
+  },
+  { hasError: boolean; message: string }
+> {
+  state = { hasError: false, message: '' }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, message: error.message }
+  }
+
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    this.props.onError(error, info)
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <section className="page-view detail-view beta-error-view">
+          <div className="intro-panel">
+            <p className="page-kicker">Beta Safety</p>
+            <h2>DreamFrame caught an issue.</h2>
+            <p>
+              Your prototype data is still stored locally. Refresh to continue,
+              or use the reset tools in the beta panel if this repeats.
+            </p>
+          </div>
+          <div className="beta-error-card">
+            <span>Last error</span>
+            <strong>{this.state.message || 'Unknown render error'}</strong>
+          </div>
+        </section>
+      )
+    }
+
+    return this.props.children
+  }
+}
+
 function App() {
   const [user, setUser] = useState<DreamUser>(loadDreamUser)
   const [journalDraft, setJournalDraft] = useState('')
@@ -980,6 +1034,144 @@ function App() {
     })
     setRitualPulse(true)
     window.setTimeout(() => setRitualPulse(false), 900)
+  }
+
+  function logBetaError(error: Error, info?: ErrorInfo | string) {
+    const source =
+      typeof info === 'string'
+        ? info
+        : info?.componentStack?.split('\n')[1]?.trim() ?? 'app'
+
+    setUser((currentUser) => ({
+      ...currentUser,
+      betaErrorLogs: [
+        {
+          id: `error_${Date.now()}`,
+          message: error.message,
+          source,
+          route: window.location.pathname,
+          createdAt: new Date().toISOString(),
+        },
+        ...currentUser.betaErrorLogs,
+      ].slice(0, 20),
+    }))
+  }
+
+  function submitBetaFeedback(input: Pick<BetaFeedback, 'category' | 'message'>) {
+    const message = input.message.trim()
+
+    if (!message) {
+      return
+    }
+
+    updateUser((currentUser) => ({
+      ...currentUser,
+      betaFeedback: [
+        {
+          id: `feedback_${Date.now()}`,
+          category: input.category,
+          message,
+          route: window.location.pathname,
+          createdAt: new Date().toISOString(),
+        },
+        ...currentUser.betaFeedback,
+      ],
+    }))
+  }
+
+  function attemptAvatarGeneration() {
+    const today = getTodayKey()
+    const usage = user.betaGenerationUsage
+    const attemptsToday =
+      usage.lastAvatarGenerationDate === today
+        ? usage.avatarGenerationsToday
+        : 0
+
+    if (attemptsToday >= usage.avatarGenerationLimit) {
+      return false
+    }
+
+    updateUser((currentUser) => {
+      const currentUsage = currentUser.betaGenerationUsage
+      const currentAttempts =
+        currentUsage.lastAvatarGenerationDate === today
+          ? currentUsage.avatarGenerationsToday
+          : 0
+
+      return {
+        ...currentUser,
+        betaGenerationUsage: {
+          ...currentUsage,
+          avatarGenerationsToday: currentAttempts + 1,
+          lastAvatarGenerationDate: today,
+        },
+      }
+    })
+
+    return true
+  }
+
+  function resetAvatarGenerationLimit() {
+    updateUser((currentUser) => ({
+      ...currentUser,
+      betaGenerationUsage: {
+        ...currentUser.betaGenerationUsage,
+        avatarGenerationsToday: 0,
+        lastAvatarGenerationDate: getTodayKey(),
+      },
+    }))
+  }
+
+  function clearBetaErrorLogs() {
+    updateUser((currentUser) => ({
+      ...currentUser,
+      betaErrorLogs: [],
+    }))
+  }
+
+  function toggleBetaDebug() {
+    updateUser((currentUser) => ({
+      ...currentUser,
+      betaDebug: {
+        ...currentUser.betaDebug,
+        enabled: !currentUser.betaDebug.enabled,
+      },
+    }))
+  }
+
+  function resetTestUser() {
+    const starterUser = refreshCreatorEraProgress(
+      createStarterWorldUser({
+        uid: user.uid,
+        displayName: user.displayName,
+        email: user.email,
+        photoURL: user.photoURL,
+        currentEra: 'Creator Era',
+        futureSelfVision: user.futureSelfVision,
+      }),
+    )
+
+    saveDreamUser({
+      ...starterUser,
+      betaDebug: {
+        ...starterUser.betaDebug,
+        lastResetAt: new Date().toISOString(),
+      },
+    })
+    setUser({
+      ...starterUser,
+      betaDebug: {
+        ...starterUser.betaDebug,
+        lastResetAt: new Date().toISOString(),
+      },
+    })
+    navigate('Home')
+  }
+
+  function clearPrototypeData() {
+    clearDreamUser()
+    setUser(loadDreamUser())
+    navigate('Landing')
   }
 
   function completeReflection(response: string) {
@@ -1823,8 +2015,9 @@ function App() {
   }
 
   return (
-    <div className={`dreamframe-shell ${ritualPulse ? 'ritual-pulse' : ''}`}>
-      <header className="top-nav">
+    <DreamFrameErrorBoundary onError={logBetaError}>
+      <div className={`dreamframe-shell ${ritualPulse ? 'ritual-pulse' : ''}`}>
+        <header className="top-nav">
         <button
           className="brand-lockup"
           onClick={() => navigate(activeTab === 'Landing' ? 'Landing' : 'Home')}
@@ -1866,6 +2059,7 @@ function App() {
               <LandingPage
                 email={waitlistEmail}
                 joined={waitlistJoined}
+                waitlistCount={user.waitlistSignups.length}
                 onEmailChange={setWaitlistEmail}
                 onJoinWaitlist={joinWaitlist}
                 onOpenApp={() => navigate(user.onboardingComplete ? 'Home' : 'Start')}
@@ -1924,6 +2118,10 @@ function App() {
                 user={user}
                 onCompleteAvatarOnboarding={completeAvatarOnboarding}
                 onGeneratedAvatar={saveGeneratedAvatar}
+                onAvatarGenerationAttempt={attemptAvatarGeneration}
+                onAvatarGenerationError={(message) =>
+                  logBetaError(new Error(message), 'avatar-generator')
+                }
                 onUpdateAvatarMood={updateAvatarMood}
                 onNavigate={navigate}
               />
@@ -1943,7 +2141,13 @@ function App() {
             {activeTab === 'Me' && (
               <MePage
                 user={user}
+                onClearBetaErrors={clearBetaErrorLogs}
                 onCompleteHabit={completeHabit}
+                onResetAvatarGenerationLimit={resetAvatarGenerationLimit}
+                onResetTestUser={resetTestUser}
+                onClearPrototypeData={clearPrototypeData}
+                onSubmitBetaFeedback={submitBetaFeedback}
+                onToggleBetaDebug={toggleBetaDebug}
                 onNavigate={navigate}
               />
             )}
@@ -1974,19 +2178,22 @@ function App() {
         open={showUpgradeModal}
         onClose={() => setShowUpgradeModal(false)}
       />
-    </div>
+      </div>
+    </DreamFrameErrorBoundary>
   )
 }
 
 function LandingPage({
   email,
   joined,
+  waitlistCount,
   onEmailChange,
   onJoinWaitlist,
   onOpenApp,
 }: {
   email: string
   joined: boolean
+  waitlistCount: number
   onEmailChange: (value: string) => void
   onJoinWaitlist: (email: string) => void
   onOpenApp: () => void
@@ -2000,6 +2207,10 @@ function LandingPage({
           <p>
             Check in, complete one small action, and watch a personal world
             reflect the person you are becoming.
+          </p>
+          <p className="beta-note">
+            Beta is focused on stability, feedback, and making sure the core
+            DreamFrame loop feels alive before adding more features.
           </p>
           <div className="landing-actions">
             <button className="glow-button" onClick={onOpenApp} type="button">
@@ -2027,7 +2238,11 @@ function LandingPage({
                 Join
               </button>
             </div>
-            {joined && <small>You're on the local prototype waitlist.</small>}
+            <small>
+              {joined
+                ? "You're on the local prototype waitlist."
+                : `${waitlistCount} local beta signups captured on this device.`}
+            </small>
           </form>
         </div>
         <div className="landing-world" aria-label="DreamFrame world preview">
@@ -3187,6 +3402,8 @@ function CreatorAchievementWall({ user }: { user: DreamUser }) {
 function AvatarPage({
   user,
   onCompleteAvatarOnboarding,
+  onAvatarGenerationAttempt,
+  onAvatarGenerationError,
   onGeneratedAvatar,
   onUpdateAvatarMood,
   onNavigate,
@@ -3198,10 +3415,21 @@ function AvatarPage({
     styleReferenceImageUrl: string
     creatorType: AvatarCreatorType
   }) => void
+  onAvatarGenerationAttempt: () => boolean
+  onAvatarGenerationError: (message: string) => void
   onGeneratedAvatar: (result: GeneratedAvatarResult) => void
   onUpdateAvatarMood: (mood: AvatarMood) => void
   onNavigate: (tab: Tab) => void
 }) {
+  const today = getTodayKey()
+  const usage = user.betaGenerationUsage
+  const attemptsToday =
+    usage.lastAvatarGenerationDate === today ? usage.avatarGenerationsToday : 0
+  const generationRemaining = Math.max(
+    usage.avatarGenerationLimit - attemptsToday,
+    0,
+  )
+
   return (
     <section className="page-view detail-view avatar-page">
       <div className="intro-panel">
@@ -3217,7 +3445,11 @@ function AvatarPage({
         <>
           <AvatarGenerator
             creatorType={user.avatar.creatorType}
+            generationLimit={usage.avatarGenerationLimit}
+            generationRemaining={generationRemaining}
             onGenerated={onGeneratedAvatar}
+            onGenerationAttempt={onAvatarGenerationAttempt}
+            onGenerationError={onAvatarGenerationError}
           />
           <AvatarOnboarding onCompleteAvatarOnboarding={onCompleteAvatarOnboarding} />
         </>
@@ -3225,7 +3457,11 @@ function AvatarPage({
         <>
           <AvatarGenerator
             creatorType={user.avatar.creatorType}
+            generationLimit={usage.avatarGenerationLimit}
+            generationRemaining={generationRemaining}
             onGenerated={onGeneratedAvatar}
+            onGenerationAttempt={onAvatarGenerationAttempt}
+            onGenerationError={onAvatarGenerationError}
           />
           <AvatarDisplayCard avatar={user.avatar} />
           <AvatarMoodPanel
@@ -3908,11 +4144,23 @@ function JournalPage({
 
 function MePage({
   user,
+  onClearBetaErrors,
   onCompleteHabit,
+  onResetAvatarGenerationLimit,
+  onResetTestUser,
+  onClearPrototypeData,
+  onSubmitBetaFeedback,
+  onToggleBetaDebug,
   onNavigate,
 }: {
   user: DreamUser
+  onClearBetaErrors: () => void
   onCompleteHabit: () => void
+  onResetAvatarGenerationLimit: () => void
+  onResetTestUser: () => void
+  onClearPrototypeData: () => void
+  onSubmitBetaFeedback: (input: Pick<BetaFeedback, 'category' | 'message'>) => void
+  onToggleBetaDebug: () => void
   onNavigate: (tab: Tab) => void
 }) {
   return (
@@ -3953,6 +4201,15 @@ function MePage({
         <InfoPanel title={`Growth Level ${getLevel(user.growthXP)}`} body={`${user.growthXP} XP`} />
       </div>
       <ShareProgressCard user={user} />
+      <BetaFeedbackPanel onSubmitBetaFeedback={onSubmitBetaFeedback} />
+      <BetaAdminPanel
+        user={user}
+        onClearBetaErrors={onClearBetaErrors}
+        onResetAvatarGenerationLimit={onResetAvatarGenerationLimit}
+        onResetTestUser={onResetTestUser}
+        onClearPrototypeData={onClearPrototypeData}
+        onToggleBetaDebug={onToggleBetaDebug}
+      />
       <ProgressHistoryList user={user} />
       <button className="glow-button inline-action" onClick={onCompleteHabit} type="button">
         <span className="material-symbols-outlined">local_florist</span>
@@ -3966,6 +4223,137 @@ function MePage({
         <span className="material-symbols-outlined">home</span>
         Back Home
       </button>
+    </section>
+  )
+}
+
+function BetaFeedbackPanel({
+  onSubmitBetaFeedback,
+}: {
+  onSubmitBetaFeedback: (input: Pick<BetaFeedback, 'category' | 'message'>) => void
+}) {
+  const [category, setCategory] = useState<BetaFeedback['category']>('bug')
+  const [message, setMessage] = useState('')
+  const [submitted, setSubmitted] = useState(false)
+
+  function submitFeedback() {
+    onSubmitBetaFeedback({ category, message })
+    setMessage('')
+    setSubmitted(true)
+    window.setTimeout(() => setSubmitted(false), 1800)
+  }
+
+  return (
+    <section className="beta-panel" aria-label="Beta feedback">
+      <div className="ritual-card-heading">
+        <span>Beta Feedback</span>
+        <strong>Help make DreamFrame stable.</strong>
+      </div>
+      <div className="beta-feedback-grid">
+        {(['bug', 'confusing', 'idea', 'emotion'] as const).map((option) => (
+          <button
+            className={category === option ? 'selected' : ''}
+            key={option}
+            onClick={() => setCategory(option)}
+            type="button"
+          >
+            {option}
+          </button>
+        ))}
+      </div>
+      <textarea
+        onChange={(event) => setMessage(event.target.value)}
+        placeholder="What broke, felt confusing, or made you feel something?"
+        value={message}
+      />
+      <button
+        className="glow-button compact-action"
+        disabled={!message.trim()}
+        onClick={submitFeedback}
+        type="button"
+      >
+        <span className="material-symbols-outlined">rate_review</span>
+        {submitted ? 'Feedback Saved' : 'Save Feedback'}
+      </button>
+    </section>
+  )
+}
+
+function BetaAdminPanel({
+  user,
+  onClearBetaErrors,
+  onResetAvatarGenerationLimit,
+  onResetTestUser,
+  onClearPrototypeData,
+  onToggleBetaDebug,
+}: {
+  user: DreamUser
+  onClearBetaErrors: () => void
+  onResetAvatarGenerationLimit: () => void
+  onResetTestUser: () => void
+  onClearPrototypeData: () => void
+  onToggleBetaDebug: () => void
+}) {
+  const today = getTodayKey()
+  const attemptsToday =
+    user.betaGenerationUsage.lastAvatarGenerationDate === today
+      ? user.betaGenerationUsage.avatarGenerationsToday
+      : 0
+
+  return (
+    <section className="beta-panel" aria-label="Beta admin and debug tools">
+      <div className="ritual-card-heading">
+        <span>Beta Tools</span>
+        <strong>Test safely, reset quickly.</strong>
+      </div>
+      <div className="beta-debug-grid">
+        <InfoPanel title="Feedback" body={`${user.betaFeedback.length} notes`} />
+        <InfoPanel title="Errors" body={`${user.betaErrorLogs.length} logged`} />
+        <InfoPanel title="Waitlist" body={`${user.waitlistSignups.length} signups`} />
+        <InfoPanel
+          title="Avatar Generations"
+          body={`${attemptsToday}/${user.betaGenerationUsage.avatarGenerationLimit} today`}
+        />
+      </div>
+      {user.betaDebug.enabled && (
+        <div className="beta-debug-log">
+          <span>Recent Error Log</span>
+          {user.betaErrorLogs.length > 0 ? (
+            <ol>
+              {user.betaErrorLogs.slice(0, 5).map((error) => (
+                <li key={error.id}>
+                  <strong>{error.message}</strong>
+                  <small>{error.source} / {error.route}</small>
+                </li>
+              ))}
+            </ol>
+          ) : (
+            <p>No captured errors.</p>
+          )}
+        </div>
+      )}
+      <div className="beta-tool-row">
+        <button className="secondary-button compact-action" onClick={onToggleBetaDebug} type="button">
+          <span className="material-symbols-outlined">bug_report</span>
+          {user.betaDebug.enabled ? 'Hide Debug' : 'Show Debug'}
+        </button>
+        <button className="secondary-button compact-action" onClick={onClearBetaErrors} type="button">
+          <span className="material-symbols-outlined">delete_sweep</span>
+          Clear Errors
+        </button>
+        <button className="secondary-button compact-action" onClick={onResetAvatarGenerationLimit} type="button">
+          <span className="material-symbols-outlined">restart_alt</span>
+          Reset Generation Limit
+        </button>
+        <button className="secondary-button compact-action" onClick={onResetTestUser} type="button">
+          <span className="material-symbols-outlined">person_add</span>
+          Reset Test User
+        </button>
+        <button className="secondary-button compact-action danger-action" onClick={onClearPrototypeData} type="button">
+          <span className="material-symbols-outlined">warning</span>
+          Clear Local Data
+        </button>
+      </div>
     </section>
   )
 }

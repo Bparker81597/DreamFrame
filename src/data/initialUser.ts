@@ -42,6 +42,16 @@ export const initialUser: DreamUser = {
   dailyCheckIns: [],
   progressHistory: [],
   waitlistSignups: [],
+  betaFeedback: [],
+  betaErrorLogs: [],
+  betaGenerationUsage: {
+    avatarGenerationsToday: 0,
+    avatarGenerationLimit: 3,
+    lastAvatarGenerationDate: undefined,
+  },
+  betaDebug: {
+    enabled: false,
+  },
   creatorProjects: [
     {
       id: 'project_dreamframe',

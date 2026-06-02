@@ -98,6 +98,18 @@ export function loadDreamUser() {
         parsedUser.progressHistory ?? initialUser.progressHistory,
       waitlistSignups:
         parsedUser.waitlistSignups ?? initialUser.waitlistSignups,
+      betaFeedback:
+        parsedUser.betaFeedback ?? initialUser.betaFeedback,
+      betaErrorLogs:
+        parsedUser.betaErrorLogs ?? initialUser.betaErrorLogs,
+      betaGenerationUsage: {
+        ...initialUser.betaGenerationUsage,
+        ...parsedUser.betaGenerationUsage,
+      },
+      betaDebug: {
+        ...initialUser.betaDebug,
+        ...parsedUser.betaDebug,
+      },
       creatorProjects:
         normalizeCreatorProjects(
           parsedUser.creatorProjects ?? initialUser.creatorProjects,

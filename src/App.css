@@ -298,6 +298,12 @@
   font-weight: 800;
 }
 
+.beta-note {
+  border-left: 3px solid rgba(36, 92, 88, 0.48);
+  padding-left: 14px;
+  color: rgba(73, 68, 84, 0.78);
+}
+
 .landing-world {
   position: relative;
   min-height: 560px;
@@ -428,6 +434,8 @@
 .ritual-response-card,
 .share-progress-card,
 .progress-history-card,
+.beta-panel,
+.beta-error-card,
 .companion-guide {
   border: 1px solid rgba(255, 255, 255, 0.55);
   border-radius: 28px;
@@ -480,6 +488,7 @@
 .ritual-response-card p,
 .share-progress-card p,
 .progress-history-card p,
+.beta-panel p,
 .companion-guide p {
   margin: 0;
   color: #494454;
@@ -598,6 +607,119 @@
 .share-card-preview strong {
   align-self: center;
   font-size: 2rem;
+}
+
+.beta-panel,
+.beta-error-card {
+  display: grid;
+  gap: 16px;
+  width: min(100%, 980px);
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.beta-feedback-grid,
+.beta-debug-grid,
+.beta-tool-row {
+  display: grid;
+  gap: 10px;
+}
+
+.beta-feedback-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.beta-feedback-grid button {
+  min-height: 44px;
+  border: 1px solid rgba(107, 56, 212, 0.16);
+  border-radius: 999px;
+  color: #494454;
+  font: inherit;
+  font-weight: 800;
+  background: rgba(255, 255, 255, 0.62);
+  cursor: pointer;
+}
+
+.beta-feedback-grid button.selected {
+  border-color: rgba(107, 56, 212, 0.48);
+  color: #6b38d4;
+  background: rgba(233, 221, 255, 0.76);
+}
+
+.beta-panel textarea {
+  min-height: 110px;
+  resize: vertical;
+  border: 1px solid rgba(107, 56, 212, 0.16);
+  border-radius: 18px;
+  padding: 14px;
+  color: #1c1c19;
+  font: inherit;
+  background: rgba(255, 255, 255, 0.72);
+  outline: none;
+}
+
+.beta-panel textarea:focus {
+  border-color: rgba(107, 56, 212, 0.48);
+  box-shadow: 0 0 0 4px rgba(107, 56, 212, 0.1);
+}
+
+.beta-debug-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.beta-tool-row {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.beta-debug-log {
+  display: grid;
+  gap: 10px;
+  border-radius: 20px;
+  padding: 16px;
+  background: rgba(28, 28, 25, 0.05);
+}
+
+.beta-debug-log > span,
+.beta-error-card span {
+  color: rgba(73, 68, 84, 0.68);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.beta-debug-log ol {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding-left: 20px;
+}
+
+.beta-debug-log li {
+  color: #494454;
+}
+
+.beta-debug-log small {
+  display: block;
+  color: rgba(73, 68, 84, 0.62);
+  font-weight: 800;
+}
+
+.danger-action {
+  border-color: rgba(159, 18, 57, 0.28);
+  color: #9f1239;
+}
+
+.beta-error-view {
+  min-height: 100dvh;
+  justify-content: center;
+}
+
+.beta-error-card strong {
+  color: #9f1239;
+  font-family: 'EB Garamond', Georgia, serif;
+  font-size: 1.6rem;
+  font-weight: 500;
 }
 
 .progress-history-card {
@@ -3385,6 +3507,9 @@
   .chapter-reflections,
   .comic-panel-row,
   .achievement-grid,
+  .beta-feedback-grid,
+  .beta-debug-grid,
+  .beta-tool-row,
   .avatar-onboarding,
   .avatar-mood-grid,
   .avatar-level-grid {
@@ -3441,6 +3566,9 @@
   .chapter-reflections,
   .comic-panel-row,
   .achievement-grid,
+  .beta-feedback-grid,
+  .beta-debug-grid,
+  .beta-tool-row,
   .avatar-onboarding,
   .avatar-upload-grid,
   .creator-identity-grid,

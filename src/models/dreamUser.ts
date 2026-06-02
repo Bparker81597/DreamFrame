@@ -82,6 +82,33 @@ export type WaitlistSignup = {
   createdAt: string
 }
 
+export type BetaFeedback = {
+  id: string
+  category: 'bug' | 'confusing' | 'idea' | 'emotion'
+  message: string
+  route: string
+  createdAt: string
+}
+
+export type BetaErrorLog = {
+  id: string
+  message: string
+  source: string
+  route: string
+  createdAt: string
+}
+
+export type BetaGenerationUsage = {
+  avatarGenerationsToday: number
+  avatarGenerationLimit: number
+  lastAvatarGenerationDate?: string
+}
+
+export type BetaDebugState = {
+  enabled: boolean
+  lastResetAt?: string
+}
+
 export type CreatorProjectStatus =
   | 'idea'
   | 'planning'
@@ -298,6 +325,10 @@ export type DreamUser = {
   dailyCheckIns: DailyCheckIn[]
   progressHistory: ProgressHistoryEntry[]
   waitlistSignups: WaitlistSignup[]
+  betaFeedback: BetaFeedback[]
+  betaErrorLogs: BetaErrorLog[]
+  betaGenerationUsage: BetaGenerationUsage
+  betaDebug: BetaDebugState
   creatorProjects: CreatorProject[]
   creatorQuestlines: CreatorQuestline[]
   storybookChapters: StorybookChapter[]
