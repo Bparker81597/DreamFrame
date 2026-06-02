@@ -23,6 +23,7 @@ import type {
   AvatarStateType,
   CheckInMood,
   CreatorProject,
+  CreatorProjectMilestone,
   DreamAvatar,
   DailyActionType,
   DreamUser,
@@ -408,6 +409,44 @@ function countProjectMilestones(user: DreamUser) {
     (total, project) => total + project.milestonesCompleted,
     0,
   )
+}
+
+function getProjectMilestones(project: CreatorProject) {
+  return project.milestones ?? []
+}
+
+function countProjectTasks(user: DreamUser) {
+  return user.creatorProjects.reduce(
+    (total, project) =>
+      total +
+      getProjectMilestones(project).reduce(
+        (milestoneTotal, milestone) =>
+          milestoneTotal +
+          milestone.tasks.filter((task) => task.completed).length,
+        0,
+      ),
+    0,
+  )
+}
+
+function getProjectProgress(project: CreatorProject) {
+  const tasks = getProjectMilestones(project).flatMap((milestone) => milestone.tasks)
+
+  if (tasks.length === 0) {
+    return project.progress
+  }
+
+  return Math.round(
+    (tasks.filter((task) => task.completed).length / tasks.length) * 100,
+  )
+}
+
+function getActiveMilestone(project: CreatorProject) {
+  return getProjectMilestones(project).find((milestone) => !milestone.completed)
+}
+
+function getMilestonesCompleted(milestones: CreatorProjectMilestone[]) {
+  return milestones.filter((milestone) => milestone.completed).length
 }
 
 function addCreatorCompanionMessage(message: string) {
@@ -1022,74 +1061,269 @@ function App() {
     }))
   }
 
-  function advanceProject(projectId: string) {
-    updateUser((currentUser) => ({
-      ...currentUser,
-      creatorXP: currentUser.creatorXP + 15,
-      creatorProjects: currentUser.creatorProjects.map((project) =>
-        project.id === projectId
-          ? {
-              ...project,
-              progress: Math.min(project.progress + 10, 100),
-              status: project.status === 'idea' ? 'building' : project.status,
-              daysWorked: project.daysWorked + 1,
-              updatedAt: new Date().toISOString(),
-            }
-          : project,
-      ),
-      progressHistory: [
-        addProgressEntry(
-          'Project moved forward',
-          currentUser.creatorProjects.find((project) => project.id === projectId)
-            ?.title ?? 'Creator project',
-          15,
-          'a project display lights up in the studio',
-        ),
-        ...currentUser.progressHistory,
-      ],
-      companionMessages: [
-        addCreatorCompanionMessage('Momentum compounds.'),
-        ...currentUser.companionMessages,
-      ],
-    }))
-  }
+  function createDreamProject(input: {
+    title: string
+    milestoneTitle: string
+    taskTitle: string
+    worldImpact: string
+  }) {
+    const now = new Date().toISOString()
+    const projectTitle = input.title.trim()
+    const milestoneTitle = input.milestoneTitle.trim() || 'Create first visible milestone'
+    const taskTitle = input.taskTitle.trim() || 'Take the first Next Step'
+    const worldImpact =
+      input.worldImpact.trim() ||
+      'This Dream Project adds visible proof to the Creator Studio.'
 
-  function completeProjectMilestone(projectId: string) {
+    if (!projectTitle) {
+      return
+    }
+
     updateUser((currentUser) => ({
       ...currentUser,
-      creatorXP: currentUser.creatorXP + 50,
-      creatorProjects: currentUser.creatorProjects.map((project) =>
-        project.id === projectId
-          ? {
-              ...project,
-              progress: Math.min(project.progress + 25, 100),
-              status: project.progress + 25 >= 100 ? 'launched' : 'building',
-              milestonesCompleted: project.milestonesCompleted + 1,
-              nextMilestone:
-                project.progress + 25 >= 100
-                  ? 'Celebrate and share what shipped'
-                  : 'Define the next visible milestone',
-              updatedAt: new Date().toISOString(),
-            }
-          : project,
-      ),
+      creatorProjects: [
+        {
+          id: `project_${Date.now()}`,
+          title: projectTitle,
+          progress: 0,
+          nextMilestone: milestoneTitle,
+          worldImpact,
+          status: 'idea',
+          xpReward: 50,
+          daysWorked: 0,
+          milestonesCompleted: 0,
+          milestones: [
+            {
+              id: `milestone_${Date.now()}`,
+              title: milestoneTitle,
+              completed: false,
+              createdAt: now,
+              updatedAt: now,
+              tasks: [
+                {
+                  id: `task_${Date.now()}`,
+                  title: taskTitle,
+                  completed: false,
+                  xpReward: 10,
+                  createdAt: now,
+                },
+              ],
+            },
+          ],
+          createdAt: now,
+          updatedAt: now,
+        },
+        ...currentUser.creatorProjects,
+      ],
       progressHistory: [
         addProgressEntry(
-          'Project milestone finished',
-          currentUser.creatorProjects.find((project) => project.id === projectId)
-            ?.title ?? 'Creator project',
-          50,
-          'the achievement wall adds a new marker',
+          'Dream Project created',
+          projectTitle,
+          0,
+          'a new project card appears in the Creator Studio',
         ),
         ...currentUser.progressHistory,
       ],
       companionMessages: [
         addCreatorCompanionMessage(
-          "You're becoming who you imagined.",
+          'A Dream Project becomes real the moment you name its next step.',
         ),
         ...currentUser.companionMessages,
       ],
     }))
+  }
+
+  function addProjectMilestone(projectId: string, title: string) {
+    const milestoneTitle = title.trim()
+
+    if (!milestoneTitle) {
+      return
+    }
+
+    updateUser((currentUser) => ({
+      ...currentUser,
+      creatorProjects: currentUser.creatorProjects.map((project) => {
+        if (project.id !== projectId) {
+          return project
+        }
+
+        const now = new Date().toISOString()
+        const milestones = [
+          ...getProjectMilestones(project),
+          {
+            id: `milestone_${Date.now()}`,
+            title: milestoneTitle,
+            completed: false,
+            createdAt: now,
+            updatedAt: now,
+            tasks: [],
+          },
+        ]
+
+        return {
+          ...project,
+          milestones,
+          nextMilestone: getActiveMilestone({ ...project, milestones })?.title ?? milestoneTitle,
+          status: project.status === 'idea' ? 'planning' : project.status,
+          updatedAt: now,
+        }
+      }),
+    }))
+  }
+
+  function addProjectTask(projectId: string, milestoneId: string, title: string) {
+    const taskTitle = title.trim()
+
+    if (!taskTitle) {
+      return
+    }
+
+    updateUser((currentUser) => ({
+      ...currentUser,
+      creatorProjects: currentUser.creatorProjects.map((project) => {
+        if (project.id !== projectId) {
+          return project
+        }
+
+        const now = new Date().toISOString()
+        const milestones = getProjectMilestones(project).map((milestone) =>
+          milestone.id === milestoneId
+            ? {
+                ...milestone,
+                tasks: [
+                  ...milestone.tasks,
+                  {
+                    id: `task_${Date.now()}`,
+                    title: taskTitle,
+                    completed: false,
+                    xpReward: 10,
+                    createdAt: now,
+                  },
+                ],
+                updatedAt: now,
+              }
+            : milestone,
+        )
+
+        return {
+          ...project,
+          milestones,
+          progress: getProjectProgress({ ...project, milestones }),
+          updatedAt: now,
+        }
+      }),
+    }))
+  }
+
+  function completeProjectTask(
+    projectId: string,
+    milestoneId: string,
+    taskId: string,
+  ) {
+    updateUser((currentUser) => {
+      let completedTaskTitle = 'Next Step'
+      let completedProjectTitle = 'Dream Project'
+      let xpGained = 0
+      let finishedMilestone = false
+
+      const creatorProjects = currentUser.creatorProjects.map((project) => {
+        if (project.id !== projectId) {
+          return project
+        }
+
+        const now = new Date().toISOString()
+        completedProjectTitle = project.title
+        const milestones = getProjectMilestones(project).map((milestone) => {
+          if (milestone.id !== milestoneId) {
+            return milestone
+          }
+
+          const tasks = milestone.tasks.map((task) => {
+            if (task.id !== taskId || task.completed) {
+              return task
+            }
+
+            completedTaskTitle = task.title
+            xpGained = task.xpReward
+
+            return {
+              ...task,
+              completed: true,
+              completedAt: now,
+            }
+          })
+          const shouldCompleteMilestone =
+            tasks.length > 0 &&
+            tasks.every((task) => task.completed) &&
+            !milestone.completed
+
+          if (shouldCompleteMilestone) {
+            finishedMilestone = true
+          }
+
+          return {
+            ...milestone,
+            tasks,
+            completed: milestone.completed || shouldCompleteMilestone,
+            completedAt: shouldCompleteMilestone
+              ? now
+              : milestone.completedAt,
+            updatedAt: now,
+          }
+        })
+        const progress = getProjectProgress({ ...project, milestones })
+        const activeMilestone = getActiveMilestone({ ...project, milestones })
+
+        return {
+          ...project,
+          progress,
+          status:
+            progress >= 100
+              ? 'launched'
+              : project.status === 'idea'
+                ? 'building'
+                : project.status,
+          daysWorked: xpGained > 0 ? project.daysWorked + 1 : project.daysWorked,
+          milestonesCompleted: getMilestonesCompleted(milestones),
+          nextMilestone:
+            activeMilestone?.title ??
+            (progress >= 100
+              ? 'Celebrate and share what shipped'
+              : 'Create the next visible milestone'),
+          milestones,
+          updatedAt: now,
+        }
+      })
+
+      if (xpGained === 0) {
+        return currentUser
+      }
+
+      return {
+        ...currentUser,
+        creatorXP: currentUser.creatorXP + xpGained + (finishedMilestone ? 50 : 0),
+        creatorProjects,
+        progressHistory: [
+          addProgressEntry(
+            finishedMilestone ? 'Milestone completed' : 'Next Step completed',
+            `${completedProjectTitle}: ${completedTaskTitle}`,
+            xpGained + (finishedMilestone ? 50 : 0),
+            finishedMilestone
+              ? 'the Creator Studio records a new milestone'
+              : 'momentum glows across the project wall',
+          ),
+          ...currentUser.progressHistory,
+        ],
+        companionMessages: [
+          addCreatorCompanionMessage(
+            finishedMilestone
+              ? 'A milestone is proof. You are building the future in pieces.'
+              : 'Momentum is not loud. It is one next step completed.',
+          ),
+          ...currentUser.companionMessages,
+        ],
+      }
+    })
   }
 
   function createFirstGoal() {
@@ -1227,9 +1461,11 @@ function App() {
             {activeTab === 'CreatorStudio' && (
               <CreatorStudioPage
                 user={user}
+                onAddProjectMilestone={addProjectMilestone}
+                onAddProjectTask={addProjectTask}
                 onCompleteFocusSession={completeFocusSession}
-                onAdvanceProject={advanceProject}
-                onCompleteProjectMilestone={completeProjectMilestone}
+                onCompleteProjectTask={completeProjectTask}
+                onCreateDreamProject={createDreamProject}
                 onNavigate={navigate}
               />
             )}
@@ -1770,15 +2006,32 @@ function WorldPage({
 
 function CreatorStudioPage({
   user,
+  onAddProjectMilestone,
+  onAddProjectTask,
   onCompleteFocusSession,
-  onAdvanceProject,
-  onCompleteProjectMilestone,
+  onCompleteProjectTask,
+  onCreateDreamProject,
   onNavigate,
 }: {
   user: DreamUser
+  onAddProjectMilestone: (projectId: string, title: string) => void
+  onAddProjectTask: (
+    projectId: string,
+    milestoneId: string,
+    title: string,
+  ) => void
   onCompleteFocusSession: (durationMinutes?: number) => void
-  onAdvanceProject: (projectId: string) => void
-  onCompleteProjectMilestone: (projectId: string) => void
+  onCompleteProjectTask: (
+    projectId: string,
+    milestoneId: string,
+    taskId: string,
+  ) => void
+  onCreateDreamProject: (input: {
+    title: string
+    milestoneTitle: string
+    taskTitle: string
+    worldImpact: string
+  }) => void
   onNavigate: (tab: Tab) => void
 }) {
   const timerOptions = [25, 45, 60]
@@ -1915,8 +2168,10 @@ function CreatorStudioPage({
 
       <CreatorProjectBoard
         projects={user.creatorProjects}
-        onAdvanceProject={onAdvanceProject}
-        onCompleteProjectMilestone={onCompleteProjectMilestone}
+        onAddProjectMilestone={onAddProjectMilestone}
+        onAddProjectTask={onAddProjectTask}
+        onCompleteProjectTask={onCompleteProjectTask}
+        onCreateDreamProject={onCreateDreamProject}
       />
 
       <CreatorQuestlinePanel user={user} />
@@ -1939,7 +2194,7 @@ function CreatorXPPanel({ user }: { user: DreamUser }) {
   return (
     <section className="creator-xp-panel" aria-label="Creator XP system">
       <div className="ritual-card-heading">
-        <span>Creator XP Engine</span>
+        <span>Creator Progress</span>
         <strong>Creator Level {user.creatorLevel}</strong>
       </div>
       <XPBar label="Creator XP" value={user.creatorXP} max={250} />
@@ -1947,6 +2202,7 @@ function CreatorXPPanel({ user }: { user: DreamUser }) {
         <li><span>Focus Session</span><strong>+20 XP</strong></li>
         <li><span>Journal Entry</span><strong>+10 XP</strong></li>
         <li><span>Goal Completed</span><strong>+20 XP</strong></li>
+        <li><span>Next Step</span><strong>+10 XP</strong></li>
         <li><span>Project Milestone</span><strong>+50 XP</strong></li>
       </ul>
     </section>
@@ -1955,55 +2211,253 @@ function CreatorXPPanel({ user }: { user: DreamUser }) {
 
 function CreatorProjectBoard({
   projects,
-  onAdvanceProject,
-  onCompleteProjectMilestone,
+  onAddProjectMilestone,
+  onAddProjectTask,
+  onCompleteProjectTask,
+  onCreateDreamProject,
 }: {
   projects: CreatorProject[]
-  onAdvanceProject: (projectId: string) => void
-  onCompleteProjectMilestone: (projectId: string) => void
+  onAddProjectMilestone: (projectId: string, title: string) => void
+  onAddProjectTask: (
+    projectId: string,
+    milestoneId: string,
+    title: string,
+  ) => void
+  onCompleteProjectTask: (
+    projectId: string,
+    milestoneId: string,
+    taskId: string,
+  ) => void
+  onCreateDreamProject: (input: {
+    title: string
+    milestoneTitle: string
+    taskTitle: string
+    worldImpact: string
+  }) => void
 }) {
+  const [projectTitle, setProjectTitle] = useState('')
+  const [milestoneTitle, setMilestoneTitle] = useState('')
+  const [taskTitle, setTaskTitle] = useState('')
+  const [worldImpact, setWorldImpact] = useState('')
+  const [milestoneDrafts, setMilestoneDrafts] = useState<Record<string, string>>({})
+  const [taskDrafts, setTaskDrafts] = useState<Record<string, string>>({})
+
+  function createProject() {
+    onCreateDreamProject({
+      title: projectTitle,
+      milestoneTitle,
+      taskTitle,
+      worldImpact,
+    })
+    setProjectTitle('')
+    setMilestoneTitle('')
+    setTaskTitle('')
+    setWorldImpact('')
+  }
+
+  function addMilestone(projectId: string) {
+    onAddProjectMilestone(projectId, milestoneDrafts[projectId] ?? '')
+    setMilestoneDrafts((drafts) => ({ ...drafts, [projectId]: '' }))
+  }
+
+  function addTask(projectId: string, milestoneId: string) {
+    const draftKey = `${projectId}_${milestoneId}`
+
+    onAddProjectTask(projectId, milestoneId, taskDrafts[draftKey] ?? '')
+    setTaskDrafts((drafts) => ({ ...drafts, [draftKey]: '' }))
+  }
+
   return (
-    <section className="creator-section" aria-label="Creator projects">
+    <section className="creator-section dream-project-system" aria-label="Dream Projects">
       <div className="section-heading-row">
         <div>
-          <p className="page-kicker">Projects</p>
-          <h3>The heart of Creator Era.</h3>
+          <p className="page-kicker">Dream Projects</p>
+          <h3>Build the future in visible steps.</h3>
         </div>
-        <span>Ideas into reality</span>
+        <span>Creator Progress</span>
       </div>
+
+      <div className="dream-project-composer">
+        <div>
+          <span>New Dream Project</span>
+          <strong>Name the world you are building.</strong>
+        </div>
+        <div className="project-form-grid">
+          <label>
+            Dream Project
+            <input
+              onChange={(event) => setProjectTitle(event.target.value)}
+              placeholder="DreamFrame, NovaTone, Portfolio..."
+              type="text"
+              value={projectTitle}
+            />
+          </label>
+          <label>
+            First Milestone
+            <input
+              onChange={(event) => setMilestoneTitle(event.target.value)}
+              placeholder="Create the first usable version"
+              type="text"
+              value={milestoneTitle}
+            />
+          </label>
+          <label>
+            Next Step
+            <input
+              onChange={(event) => setTaskTitle(event.target.value)}
+              placeholder="One action you can finish today"
+              type="text"
+              value={taskTitle}
+            />
+          </label>
+          <label>
+            World Impact
+            <input
+              onChange={(event) => setWorldImpact(event.target.value)}
+              placeholder="What changes in your DreamFrame world?"
+              type="text"
+              value={worldImpact}
+            />
+          </label>
+        </div>
+        <button
+          className="glow-button compact-action"
+          disabled={!projectTitle.trim()}
+          onClick={createProject}
+          type="button"
+        >
+          <span className="material-symbols-outlined">auto_awesome</span>
+          Create Dream Project
+        </button>
+      </div>
+
       <div className="project-grid">
-        {projects.map((project) => (
-          <article className="project-card" key={project.id}>
-            <div className="project-card-header">
-              <span>{project.status}</span>
-              <strong>{project.title}</strong>
-            </div>
-            <div className="project-progress" aria-label={`${project.progress}% complete`}>
-              <span style={{ width: `${project.progress}%` }}></span>
-            </div>
-            <p>{project.progress}% complete</p>
-            <dl>
-              <div>
-                <dt>Next Milestone</dt>
-                <dd>{project.nextMilestone}</dd>
+        {projects.map((project) => {
+          const progress = getProjectProgress(project)
+          const activeMilestone = getActiveMilestone(project)
+          const projectMilestones = getProjectMilestones(project)
+          const completedTasks = projectMilestones.reduce(
+            (total, milestone) =>
+              total + milestone.tasks.filter((task) => task.completed).length,
+            0,
+          )
+          const totalTasks = projectMilestones.reduce(
+            (total, milestone) => total + milestone.tasks.length,
+            0,
+          )
+
+          return (
+            <article className="project-card dream-project-card" key={project.id}>
+              <div className="project-card-header">
+                <span>{project.status}</span>
+                <strong>{project.title}</strong>
               </div>
-              <div>
-                <dt>Reward</dt>
-                <dd>+{project.xpReward} Creator XP</dd>
+              <div className="project-progress" aria-label={`${progress}% complete`}>
+                <span style={{ width: `${progress}%` }}></span>
               </div>
-            </dl>
-            <div className="project-actions">
-              <button className="secondary-button" onClick={() => onAdvanceProject(project.id)} type="button">
-                <span className="material-symbols-outlined">trending_up</span>
-                Work Today
-              </button>
-              <button className="glow-button" onClick={() => onCompleteProjectMilestone(project.id)} type="button">
-                <span className="material-symbols-outlined">flag</span>
-                Finish Milestone
-              </button>
-            </div>
-          </article>
-        ))}
+              <div className="project-momentum-row">
+                <span>Momentum {progress}%</span>
+                <strong>{completedTasks}/{totalTasks || 1} Next Steps</strong>
+              </div>
+              <dl>
+                <div>
+                  <dt>Next Milestone</dt>
+                  <dd>{activeMilestone?.title ?? project.nextMilestone}</dd>
+                </div>
+                <div>
+                  <dt>World Impact</dt>
+                  <dd>{project.worldImpact}</dd>
+                </div>
+              </dl>
+
+              <div className="milestone-stack">
+                {projectMilestones.map((milestone) => {
+                  const draftKey = `${project.id}_${milestone.id}`
+
+                  return (
+                    <section
+                      className={`milestone-card ${milestone.completed ? 'completed' : ''}`}
+                      key={milestone.id}
+                    >
+                      <div className="milestone-heading">
+                        <span>{milestone.completed ? 'Milestone Complete' : 'Milestone'}</span>
+                        <strong>{milestone.title}</strong>
+                      </div>
+                      <div className="task-list">
+                        {milestone.tasks.map((task) => (
+                          <button
+                            className={task.completed ? 'task-row completed' : 'task-row'}
+                            disabled={task.completed}
+                            key={task.id}
+                            onClick={() =>
+                              onCompleteProjectTask(
+                                project.id,
+                                milestone.id,
+                                task.id,
+                              )
+                            }
+                            type="button"
+                          >
+                            <span className="material-symbols-outlined">
+                              {task.completed ? 'check_circle' : 'radio_button_unchecked'}
+                            </span>
+                            <strong>{task.title}</strong>
+                            <small>+{task.xpReward} XP</small>
+                          </button>
+                        ))}
+                      </div>
+                      {!milestone.completed && (
+                        <div className="next-step-composer">
+                          <input
+                            onChange={(event) =>
+                              setTaskDrafts((drafts) => ({
+                                ...drafts,
+                                [draftKey]: event.target.value,
+                              }))
+                            }
+                            placeholder="Add a Next Step"
+                            type="text"
+                            value={taskDrafts[draftKey] ?? ''}
+                          />
+                          <button
+                            className="secondary-button compact-avatar-action"
+                            onClick={() => addTask(project.id, milestone.id)}
+                            type="button"
+                          >
+                            <span className="material-symbols-outlined">add_task</span>
+                            Add
+                          </button>
+                        </div>
+                      )}
+                    </section>
+                  )
+                })}
+              </div>
+
+              <div className="next-step-composer milestone-composer">
+                <input
+                  onChange={(event) =>
+                    setMilestoneDrafts((drafts) => ({
+                      ...drafts,
+                      [project.id]: event.target.value,
+                    }))
+                  }
+                  placeholder="Add the next milestone"
+                  type="text"
+                  value={milestoneDrafts[project.id] ?? ''}
+                />
+                <button
+                  className="secondary-button compact-avatar-action"
+                  onClick={() => addMilestone(project.id)}
+                  type="button"
+                >
+                  <span className="material-symbols-outlined">flag</span>
+                  Add Milestone
+                </button>
+              </div>
+            </article>
+          )
+        })}
       </div>
     </section>
   )
@@ -2557,6 +3011,9 @@ function FutureSelfPage({
   user: DreamUser
   onNavigate: (tab: Tab) => void
 }) {
+  const completedProjectTasks = countProjectTasks(user)
+  const completedProjectMilestones = countProjectMilestones(user)
+
   return (
     <section className="page-view detail-view">
       <div className="intro-panel">
@@ -2605,13 +3062,15 @@ function FutureSelfPage({
         </motion.article>
         <span className="flow-arrow">↓</span>
         <motion.article className="future-panel" whileHover={{ y: -5 }}>
-          <span>Progress Summary</span>
+          <span>Creator Progress</span>
           <div className="progress-row">
             <strong>Studio Level {user.currentWorld.studioLevel}</strong>
             <strong>Garden Level {user.currentWorld.gardenLevel}</strong>
             <strong>Creator Level {user.creatorLevel}</strong>
             <strong>{user.creatorXP} XP</strong>
-            <strong>{user.creatorProjects.length} Projects</strong>
+            <strong>{user.creatorProjects.length} Dream Projects</strong>
+            <strong>{completedProjectTasks} Next Steps</strong>
+            <strong>{completedProjectMilestones} Milestones</strong>
           </div>
         </motion.article>
       </div>

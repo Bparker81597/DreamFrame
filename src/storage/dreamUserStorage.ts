@@ -1,8 +1,40 @@
 import { initialUser } from '../data/initialUser'
-import type { DreamUser } from '../models/dreamUser'
+import type { CreatorProject, DreamUser } from '../models/dreamUser'
 import { recalculateLevels } from '../models/progression'
 
 export const dreamUserStorageKey = 'dreamframe-prototype-user-v1'
+
+function normalizeCreatorProjects(projects: CreatorProject[]) {
+  return projects.map((project) => {
+    const now = new Date().toISOString()
+    const milestones = project.milestones ?? [
+      {
+        id: `milestone_${project.id}_next`,
+        title: project.nextMilestone,
+        completed: false,
+        createdAt: project.createdAt ?? now,
+        updatedAt: project.updatedAt ?? now,
+        tasks: [
+          {
+            id: `task_${project.id}_next_step`,
+            title: project.nextMilestone,
+            completed: false,
+            xpReward: 10,
+            createdAt: project.createdAt ?? now,
+          },
+        ],
+      },
+    ]
+
+    return {
+      ...project,
+      worldImpact:
+        project.worldImpact ??
+        'This Dream Project adds visible proof to the Creator Studio.',
+      milestones,
+    }
+  })
+}
 
 export function loadDreamUser() {
   const storedUser = window.localStorage.getItem(dreamUserStorageKey)
@@ -28,7 +60,9 @@ export function loadDreamUser() {
       waitlistSignups:
         parsedUser.waitlistSignups ?? initialUser.waitlistSignups,
       creatorProjects:
-        parsedUser.creatorProjects ?? initialUser.creatorProjects,
+        normalizeCreatorProjects(
+          parsedUser.creatorProjects ?? initialUser.creatorProjects,
+        ),
       creatorQuestlines:
         parsedUser.creatorQuestlines ?? initialUser.creatorQuestlines,
       storybookChapters:

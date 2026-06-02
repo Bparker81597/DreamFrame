@@ -1647,6 +1647,186 @@
   font-size: 0.92rem;
 }
 
+.dream-project-system .project-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.dream-project-composer {
+  display: grid;
+  gap: 16px;
+  border: 1px solid rgba(107, 56, 212, 0.14);
+  border-radius: 24px;
+  padding: 20px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.72), rgba(222, 247, 235, 0.34)),
+    rgba(255, 255, 255, 0.5);
+}
+
+.dream-project-composer > div:first-child {
+  display: grid;
+  gap: 6px;
+}
+
+.dream-project-composer > div:first-child span,
+.milestone-heading span,
+.project-momentum-row span,
+.task-row small {
+  color: rgba(73, 68, 84, 0.68);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.dream-project-composer > div:first-child strong {
+  color: #245c58;
+  font-family: 'EB Garamond', Georgia, serif;
+  font-size: 1.6rem;
+  font-weight: 500;
+}
+
+.project-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.project-form-grid label,
+.next-step-composer {
+  display: grid;
+  gap: 8px;
+  color: rgba(73, 68, 84, 0.72);
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.project-form-grid input,
+.next-step-composer input {
+  width: 100%;
+  border: 1px solid rgba(107, 56, 212, 0.16);
+  border-radius: 18px;
+  padding: 13px 14px;
+  color: #1c1c19;
+  font: inherit;
+  letter-spacing: 0;
+  background: rgba(255, 255, 255, 0.72);
+  outline: none;
+}
+
+.project-form-grid input:focus,
+.next-step-composer input:focus {
+  border-color: rgba(107, 56, 212, 0.48);
+  box-shadow: 0 0 0 4px rgba(107, 56, 212, 0.1);
+}
+
+.dream-project-card {
+  align-content: start;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.64), rgba(255, 249, 244, 0.52)),
+    rgba(255, 255, 255, 0.5);
+}
+
+.project-momentum-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-radius: 18px;
+  padding: 12px 14px;
+  background: rgba(222, 247, 235, 0.48);
+}
+
+.project-momentum-row strong {
+  color: #245c58;
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 0.95rem;
+  font-weight: 900;
+}
+
+.milestone-stack {
+  display: grid;
+  gap: 12px;
+}
+
+.milestone-card {
+  display: grid;
+  gap: 12px;
+  border: 1px solid rgba(36, 92, 88, 0.14);
+  border-radius: 22px;
+  padding: 14px;
+  background: rgba(255, 255, 255, 0.58);
+}
+
+.milestone-card.completed {
+  border-color: rgba(36, 92, 88, 0.28);
+  background:
+    linear-gradient(135deg, rgba(222, 247, 235, 0.72), rgba(255, 255, 255, 0.62));
+}
+
+.milestone-heading {
+  display: grid;
+  gap: 4px;
+}
+
+.milestone-heading strong {
+  color: #1c1c19;
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 1rem;
+  font-weight: 900;
+}
+
+.task-list {
+  display: grid;
+  gap: 8px;
+}
+
+.task-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 50px;
+  border: 1px solid rgba(107, 56, 212, 0.12);
+  border-radius: 16px;
+  padding: 10px 12px;
+  color: #494454;
+  text-align: left;
+  font: inherit;
+  background: rgba(255, 255, 255, 0.68);
+  cursor: pointer;
+}
+
+.task-row strong {
+  color: #1c1c19;
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 0.95rem;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.task-row.completed {
+  color: #245c58;
+  background: rgba(222, 247, 235, 0.74);
+  cursor: default;
+}
+
+.task-row.completed strong {
+  color: #245c58;
+  text-decoration: line-through;
+  text-decoration-thickness: 2px;
+  text-decoration-color: rgba(36, 92, 88, 0.4);
+}
+
+.next-step-composer {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+}
+
+.milestone-composer {
+  margin-top: 2px;
+}
+
 .questline-grid {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
@@ -2922,6 +3102,8 @@
   .xp-grid,
   .daily-action-options,
   .project-grid,
+  .dream-project-system .project-grid,
+  .project-form-grid,
   .questline-grid,
   .storybook-grid,
   .achievement-grid,
@@ -2972,6 +3154,8 @@
   .daily-action-options,
   .progress-history-card li,
   .project-grid,
+  .dream-project-system .project-grid,
+  .project-form-grid,
   .questline-grid,
   .storybook-grid,
   .achievement-grid,
@@ -2982,6 +3166,18 @@
   .avatar-level-grid,
   .avatar-state-switcher {
     grid-template-columns: 1fr;
+  }
+
+  .next-step-composer {
+    grid-template-columns: 1fr;
+  }
+
+  .task-row {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .task-row small {
+    grid-column: 2;
   }
 
   .avatar-step.wide,

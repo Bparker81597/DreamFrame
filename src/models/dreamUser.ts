@@ -84,15 +84,36 @@ export type CreatorProjectStatus =
   | 'building'
   | 'launched'
 
+export type CreatorProjectTask = {
+  id: string
+  title: string
+  completed: boolean
+  xpReward: number
+  createdAt: string
+  completedAt?: string
+}
+
+export type CreatorProjectMilestone = {
+  id: string
+  title: string
+  tasks: CreatorProjectTask[]
+  completed: boolean
+  createdAt: string
+  updatedAt: string
+  completedAt?: string
+}
+
 export type CreatorProject = {
   id: string
   title: string
   progress: number
   nextMilestone: string
+  worldImpact: string
   status: CreatorProjectStatus
   xpReward: number
   daysWorked: number
   milestonesCompleted: number
+  milestones: CreatorProjectMilestone[]
   createdAt: string
   updatedAt: string
 }
