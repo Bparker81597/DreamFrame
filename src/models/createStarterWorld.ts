@@ -47,6 +47,7 @@ export function createStarterWorldUser(input: CreateStarterUserInput): DreamUser
     creatorProjects: initialUser.creatorProjects,
     creatorQuestlines: initialUser.creatorQuestlines,
     storybookChapters: initialUser.storybookChapters,
+    dreamFrameMemories: initialUser.dreamFrameMemories,
     creatorAchievements: initialUser.creatorAchievements,
     avatar: {
       ...initialUser.avatar,

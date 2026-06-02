@@ -131,8 +131,39 @@ export type CreatorQuestline = {
 export type StorybookChapter = {
   id: string
   chapterNumber: number
+  weekLabel: string
   title: string
+  subtitle: string
   body: string
+  triggerType: 'beginning' | 'weekly_reflection' | 'milestone' | 'momentum'
+  highlights: string[]
+  reflections: {
+    wentWell: string
+    challenged: string
+    proudOf: string
+    next: string
+  }
+  comicPanels: Array<{
+    id: string
+    title: string
+    description: string
+    avatarPose: AvatarPose
+  }>
+  createdAt: string
+}
+
+export type DreamFrameMemory = {
+  id: string
+  type:
+    | 'first_project'
+    | 'first_milestone'
+    | 'longest_streak'
+    | 'biggest_win'
+    | 'favorite_quote'
+    | 'favorite_journal_entry'
+  label: string
+  value: string
+  sourceId?: string
   createdAt: string
 }
 
@@ -259,6 +290,7 @@ export type DreamUser = {
   creatorProjects: CreatorProject[]
   creatorQuestlines: CreatorQuestline[]
   storybookChapters: StorybookChapter[]
+  dreamFrameMemories: DreamFrameMemory[]
   creatorAchievements: CreatorAchievement[]
   avatar: DreamAvatar
   habitLogs: HabitLog[]

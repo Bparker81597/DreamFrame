@@ -1877,6 +1877,241 @@
     rgba(255, 255, 255, 0.5);
 }
 
+.storybook-system {
+  overflow: hidden;
+}
+
+.storybook-reflection-card,
+.memory-card,
+.timeline-chapter,
+.comic-panel-card {
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.55);
+  box-shadow: 0 16px 34px rgba(107, 56, 212, 0.08);
+}
+
+.storybook-reflection-card {
+  display: grid;
+  gap: 16px;
+  padding: 22px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.72), rgba(233, 221, 255, 0.42)),
+    rgba(255, 255, 255, 0.55);
+}
+
+.storybook-reflection-card > div:first-child {
+  display: grid;
+  gap: 6px;
+}
+
+.storybook-reflection-card > div:first-child span,
+.memory-card span,
+.chapter-marker span,
+.chapter-body > span,
+.comic-panel-card span {
+  color: rgba(73, 68, 84, 0.68);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.storybook-reflection-card > div:first-child strong,
+.memory-card strong,
+.chapter-marker strong {
+  color: #6b38d4;
+  font-family: 'EB Garamond', Georgia, serif;
+  font-size: 1.45rem;
+  font-weight: 500;
+  line-height: 1.05;
+}
+
+.storybook-reflection-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.storybook-reflection-grid label {
+  display: grid;
+  gap: 8px;
+  color: rgba(73, 68, 84, 0.72);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.storybook-reflection-grid textarea {
+  min-height: 92px;
+  resize: vertical;
+  border: 1px solid rgba(107, 56, 212, 0.16);
+  border-radius: 18px;
+  padding: 13px 14px;
+  color: #1c1c19;
+  font: inherit;
+  letter-spacing: 0;
+  background: rgba(255, 255, 255, 0.72);
+  outline: none;
+}
+
+.storybook-reflection-grid textarea:focus {
+  border-color: rgba(107, 56, 212, 0.48);
+  box-shadow: 0 0 0 4px rgba(107, 56, 212, 0.1);
+}
+
+.storybook-memory-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.memory-card {
+  display: grid;
+  gap: 8px;
+  padding: 16px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.72), rgba(222, 247, 235, 0.42)),
+    rgba(255, 255, 255, 0.55);
+}
+
+.memory-card strong {
+  color: #245c58;
+  font-size: 1.2rem;
+}
+
+.storybook-timeline {
+  position: relative;
+  display: grid;
+  gap: 16px;
+}
+
+.storybook-timeline::before {
+  position: absolute;
+  top: 10px;
+  bottom: 10px;
+  left: 104px;
+  width: 2px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(107, 56, 212, 0.28), rgba(36, 92, 88, 0.32));
+  content: '';
+}
+
+.timeline-chapter {
+  position: relative;
+  display: grid;
+  grid-template-columns: 160px minmax(0, 1fr);
+  gap: 20px;
+  padding: 22px;
+}
+
+.timeline-chapter::before {
+  position: absolute;
+  top: 30px;
+  left: 96px;
+  width: 18px;
+  height: 18px;
+  border: 4px solid rgba(255, 255, 255, 0.9);
+  border-radius: 999px;
+  background: #6b38d4;
+  box-shadow: 0 0 0 6px rgba(107, 56, 212, 0.12);
+  content: '';
+}
+
+.chapter-marker {
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  padding-right: 18px;
+}
+
+.chapter-body {
+  display: grid;
+  gap: 12px;
+}
+
+.chapter-body > strong {
+  color: #6b38d4;
+  font-family: 'EB Garamond', Georgia, serif;
+  font-size: 2rem;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.chapter-body p {
+  margin: 0;
+  color: #494454;
+}
+
+.chapter-highlights {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.chapter-highlights li {
+  border-radius: 999px;
+  padding: 8px 10px;
+  color: #245c58;
+  font-size: 0.82rem;
+  font-weight: 800;
+  background: rgba(137, 205, 194, 0.28);
+}
+
+.chapter-reflections {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+}
+
+.chapter-reflections div {
+  border-radius: 16px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.62);
+}
+
+.chapter-reflections dt {
+  color: rgba(73, 68, 84, 0.68);
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.chapter-reflections dd {
+  margin: 6px 0 0;
+  color: #1c1c19;
+  font-weight: 700;
+}
+
+.comic-panel-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.comic-panel-card {
+  display: grid;
+  align-content: start;
+  min-height: 132px;
+  padding: 14px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.74), rgba(255, 249, 244, 0.58)),
+    repeating-linear-gradient(
+      -8deg,
+      rgba(28, 28, 25, 0.04) 0 1px,
+      transparent 1px 9px
+    );
+}
+
+.comic-panel-card p {
+  margin-top: 8px;
+  font-size: 0.9rem;
+}
+
 .achievement-grid {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
@@ -3106,6 +3341,10 @@
   .project-form-grid,
   .questline-grid,
   .storybook-grid,
+  .storybook-reflection-grid,
+  .storybook-memory-grid,
+  .chapter-reflections,
+  .comic-panel-row,
   .achievement-grid,
   .avatar-onboarding,
   .avatar-mood-grid,
@@ -3158,6 +3397,10 @@
   .project-form-grid,
   .questline-grid,
   .storybook-grid,
+  .storybook-reflection-grid,
+  .storybook-memory-grid,
+  .chapter-reflections,
+  .comic-panel-row,
   .achievement-grid,
   .avatar-onboarding,
   .avatar-upload-grid,
@@ -3178,6 +3421,19 @@
 
   .task-row small {
     grid-column: 2;
+  }
+
+  .storybook-timeline::before,
+  .timeline-chapter::before {
+    display: none;
+  }
+
+  .timeline-chapter {
+    grid-template-columns: 1fr;
+  }
+
+  .chapter-marker {
+    padding-right: 0;
   }
 
   .avatar-step.wide,

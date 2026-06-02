@@ -174,8 +174,53 @@ export const initialUser: DreamUser = {
     {
       id: 'chapter_1',
       chapterNumber: 1,
+      weekLabel: 'Week 1',
       title: 'The Beginning',
+      subtitle: 'Creator Era opened.',
       body: 'Brittany entered Creator Era and began building DreamFrame. The starter studio was quiet, but the first spark was already there.',
+      triggerType: 'beginning',
+      highlights: [
+        'Entered Creator Era',
+        'Started building DreamFrame',
+        'Opened the starter studio',
+      ],
+      reflections: {
+        wentWell: '',
+        challenged: '',
+        proudOf: '',
+        next: '',
+      },
+      comicPanels: [
+        {
+          id: 'panel_beginning_desk',
+          title: 'Starter Desk',
+          description: 'Avatar sits at the starter desk with one glowing idea on the screen.',
+          avatarPose: 'working',
+        },
+        {
+          id: 'panel_beginning_future',
+          title: 'Future Signal',
+          description: 'A soft outline of Future Self appears beyond the studio window.',
+          avatarPose: 'future_facing',
+        },
+      ],
+      createdAt: now,
+    },
+  ],
+  dreamFrameMemories: [
+    {
+      id: 'memory_first_project_dreamframe',
+      type: 'first_project',
+      label: 'First Dream Project',
+      value: 'DreamFrame',
+      sourceId: 'project_dreamframe',
+      createdAt: now,
+    },
+    {
+      id: 'memory_favorite_quote_start',
+      type: 'favorite_quote',
+      label: 'Favorite Quote',
+      value: 'Every small step matters.',
       createdAt: now,
     },
   ],

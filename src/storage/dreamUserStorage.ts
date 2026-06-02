@@ -1,5 +1,10 @@
 import { initialUser } from '../data/initialUser'
-import type { CreatorProject, DreamUser } from '../models/dreamUser'
+import type {
+  CreatorProject,
+  DreamFrameMemory,
+  DreamUser,
+  StorybookChapter,
+} from '../models/dreamUser'
 import { recalculateLevels } from '../models/progression'
 
 export const dreamUserStorageKey = 'dreamframe-prototype-user-v1'
@@ -36,6 +41,27 @@ function normalizeCreatorProjects(projects: CreatorProject[]) {
   })
 }
 
+function normalizeStorybookChapters(chapters: StorybookChapter[]) {
+  return chapters.map((chapter, index) => ({
+    ...chapter,
+    weekLabel: chapter.weekLabel ?? `Week ${index + 1}`,
+    subtitle: chapter.subtitle ?? 'A new piece of the journey appeared.',
+    triggerType: chapter.triggerType ?? 'milestone',
+    highlights: chapter.highlights ?? [],
+    reflections: chapter.reflections ?? {
+      wentWell: '',
+      challenged: '',
+      proudOf: '',
+      next: '',
+    },
+    comicPanels: chapter.comicPanels ?? [],
+  }))
+}
+
+function normalizeDreamFrameMemories(memories?: DreamFrameMemory[]) {
+  return memories ?? initialUser.dreamFrameMemories
+}
+
 export function loadDreamUser() {
   const storedUser = window.localStorage.getItem(dreamUserStorageKey)
 
@@ -66,7 +92,11 @@ export function loadDreamUser() {
       creatorQuestlines:
         parsedUser.creatorQuestlines ?? initialUser.creatorQuestlines,
       storybookChapters:
-        parsedUser.storybookChapters ?? initialUser.storybookChapters,
+        normalizeStorybookChapters(
+          parsedUser.storybookChapters ?? initialUser.storybookChapters,
+        ),
+      dreamFrameMemories:
+        normalizeDreamFrameMemories(parsedUser.dreamFrameMemories),
       creatorAchievements:
         parsedUser.creatorAchievements ?? initialUser.creatorAchievements,
       avatar: {

@@ -24,6 +24,7 @@ import type {
   CheckInMood,
   CreatorProject,
   CreatorProjectMilestone,
+  DreamFrameMemory,
   DreamAvatar,
   DailyActionType,
   DreamUser,
@@ -477,6 +478,87 @@ function addProgressEntry(
   }
 }
 
+function createStorybookChapter(input: {
+  chapterNumber: number
+  weekLabel: string
+  title: string
+  subtitle: string
+  body: string
+  triggerType: 'beginning' | 'weekly_reflection' | 'milestone' | 'momentum'
+  highlights: string[]
+  reflections?: {
+    wentWell: string
+    challenged: string
+    proudOf: string
+    next: string
+  }
+}) {
+  const now = new Date().toISOString()
+
+  return {
+    id: `chapter_${Date.now()}`,
+    chapterNumber: input.chapterNumber,
+    weekLabel: input.weekLabel,
+    title: input.title,
+    subtitle: input.subtitle,
+    body: input.body,
+    triggerType: input.triggerType,
+    highlights: input.highlights,
+    reflections: input.reflections ?? {
+      wentWell: '',
+      challenged: '',
+      proudOf: '',
+      next: '',
+    },
+    comicPanels: [
+      {
+        id: `panel_${Date.now()}_1`,
+        title: 'At the Desk',
+        description: 'Avatar works inside the Creator Studio as the project wall begins to glow.',
+        avatarPose: 'working' as const,
+      },
+      {
+        id: `panel_${Date.now()}_2`,
+        title: 'World Impact',
+        description: 'A completed step becomes visible as a new detail in the DreamFrame world.',
+        avatarPose: 'celebrating' as const,
+      },
+      {
+        id: `panel_${Date.now()}_3`,
+        title: 'Future Signal',
+        description: 'Future Self appears clearer as the chapter closes.',
+        avatarPose: 'future_facing' as const,
+      },
+    ],
+    createdAt: now,
+  }
+}
+
+function upsertMemory(
+  memories: DreamFrameMemory[],
+  memory: DreamFrameMemory,
+) {
+  const sourceAgnosticTypes: DreamFrameMemory['type'][] = [
+    'first_project',
+    'first_milestone',
+    'longest_streak',
+  ]
+
+  if (
+    memories.some(
+      (item) =>
+        item.type === memory.type &&
+        (sourceAgnosticTypes.includes(memory.type) ||
+          !memory.sourceId ||
+          item.sourceId === memory.sourceId),
+    )
+  ) {
+    return memories
+  }
+
+  return [memory, ...memories]
+}
+
 function refreshCreatorEraProgress(user: DreamUser): DreamUser {
   const nextUser = checkFirstUpgrade(user)
   let nextStudioLevel = nextUser.currentWorld.studioLevel
@@ -540,13 +622,19 @@ function refreshCreatorEraProgress(user: DreamUser): DreamUser {
     !nextUser.storybookChapters.some((chapter) => chapter.title === 'Momentum')
   const nextStorybookChapters = shouldAddMomentumChapter
     ? [
-        {
-          id: `chapter_${Date.now()}`,
+        createStorybookChapter({
           chapterNumber: existingChapterCount + 1,
+          weekLabel: `Week ${existingChapterCount + 1}`,
           title: 'Momentum',
+          subtitle: 'The studio started collecting proof.',
           body: `${nextUser.displayName} kept returning to the studio. Focus sessions, journal entries, and project days turned the room into a place with evidence.`,
-          createdAt: new Date().toISOString(),
-        },
+          triggerType: 'momentum',
+          highlights: [
+            `${focusSessions} focus sessions completed`,
+            `${journalEntries} journal reflections saved`,
+            `${projectWorkDays} project work days recorded`,
+          ],
+        }),
         ...nextUser.storybookChapters,
       ]
     : nextUser.storybookChapters
@@ -1079,11 +1167,21 @@ function App() {
       return
     }
 
+    const projectId = `project_${Date.now()}`
+
     updateUser((currentUser) => ({
       ...currentUser,
+      dreamFrameMemories: upsertMemory(currentUser.dreamFrameMemories, {
+        id: `memory_first_project_${Date.now()}`,
+        type: 'first_project',
+        label: 'First Dream Project',
+        value: projectTitle,
+        sourceId: projectId,
+        createdAt: now,
+      }),
       creatorProjects: [
         {
-          id: `project_${Date.now()}`,
+          id: projectId,
           title: projectTitle,
           progress: 0,
           nextMilestone: milestoneTitle,
@@ -1223,6 +1321,7 @@ function App() {
     updateUser((currentUser) => {
       let completedTaskTitle = 'Next Step'
       let completedProjectTitle = 'Dream Project'
+      let completedMilestoneTitle = 'Milestone'
       let xpGained = 0
       let finishedMilestone = false
 
@@ -1259,6 +1358,7 @@ function App() {
 
           if (shouldCompleteMilestone) {
             finishedMilestone = true
+            completedMilestoneTitle = milestone.title
           }
 
           return {
@@ -1303,6 +1403,44 @@ function App() {
         ...currentUser,
         creatorXP: currentUser.creatorXP + xpGained + (finishedMilestone ? 50 : 0),
         creatorProjects,
+        dreamFrameMemories: finishedMilestone
+          ? upsertMemory(
+              upsertMemory(currentUser.dreamFrameMemories, {
+                id: `memory_first_milestone_${Date.now()}`,
+                type: 'first_milestone',
+                label: 'First Milestone',
+                value: completedMilestoneTitle,
+                sourceId: milestoneId,
+                createdAt: new Date().toISOString(),
+              }),
+              {
+                id: `memory_biggest_win_${Date.now()}`,
+                type: 'biggest_win',
+                label: 'Biggest Win',
+                value: `${completedProjectTitle}: ${completedMilestoneTitle}`,
+                sourceId: milestoneId,
+                createdAt: new Date().toISOString(),
+              },
+            )
+          : currentUser.dreamFrameMemories,
+        storybookChapters: finishedMilestone
+          ? [
+              createStorybookChapter({
+                chapterNumber: currentUser.storybookChapters.length + 1,
+                weekLabel: `Week ${currentUser.storybookChapters.length + 1}`,
+                title: 'The Builder',
+                subtitle: `${completedProjectTitle} reached a real milestone.`,
+                body: `${currentUser.displayName} completed "${completedMilestoneTitle}" inside ${completedProjectTitle}. The Future Self became clearer because the dream now had proof attached to it.`,
+                triggerType: 'milestone',
+                highlights: [
+                  completedMilestoneTitle,
+                  `${completedProjectTitle} moved forward`,
+                  `+${xpGained + 50} Creator XP earned`,
+                ],
+              }),
+              ...currentUser.storybookChapters,
+            ]
+          : currentUser.storybookChapters,
         progressHistory: [
           addProgressEntry(
             finishedMilestone ? 'Milestone completed' : 'Next Step completed',
@@ -1322,6 +1460,72 @@ function App() {
           ),
           ...currentUser.companionMessages,
         ],
+      }
+    })
+  }
+
+  function saveStorybookReflection(input: {
+    wentWell: string
+    challenged: string
+    proudOf: string
+    next: string
+  }) {
+    const hasReflection = Object.values(input).some((value) => value.trim())
+
+    if (!hasReflection) {
+      return
+    }
+
+    updateUser((currentUser) => {
+      const chapterNumber = currentUser.storybookChapters.length + 1
+      const recentProject =
+        currentUser.creatorProjects.find((project) => project.progress > 0) ??
+        currentUser.creatorProjects[0]
+
+      return {
+        ...currentUser,
+        storybookChapters: [
+          createStorybookChapter({
+            chapterNumber,
+            weekLabel: `Week ${chapterNumber}`,
+            title: 'Finding Momentum',
+            subtitle: 'A weekly reflection became part of the story.',
+            body: `${currentUser.displayName} paused to notice the week. Progress was not only measured in XP; it became a chapter worth remembering.`,
+            triggerType: 'weekly_reflection',
+            highlights: [
+              input.wentWell.trim() || 'Noticed what went well',
+              input.proudOf.trim() || 'Named a point of pride',
+              input.next.trim() || 'Chose what comes next',
+            ],
+            reflections: {
+              wentWell: input.wentWell.trim(),
+              challenged: input.challenged.trim(),
+              proudOf: input.proudOf.trim(),
+              next: input.next.trim(),
+            },
+          }),
+          ...currentUser.storybookChapters,
+        ],
+        dreamFrameMemories: input.proudOf.trim()
+          ? upsertMemory(currentUser.dreamFrameMemories, {
+              id: `memory_journal_${Date.now()}`,
+              type: 'favorite_journal_entry',
+              label: 'Favorite Reflection',
+              value: input.proudOf.trim(),
+              sourceId: recentProject?.id,
+              createdAt: new Date().toISOString(),
+            })
+          : currentUser.dreamFrameMemories,
+        progressHistory: [
+          addProgressEntry(
+            'Storybook reflection saved',
+            `Week ${chapterNumber}`,
+            10,
+            'the Storybook adds a new chapter of proof',
+          ),
+          ...currentUser.progressHistory,
+        ],
+        reflectionXP: currentUser.reflectionXP + 10,
       }
     })
   }
@@ -1466,6 +1670,7 @@ function App() {
                 onCompleteFocusSession={completeFocusSession}
                 onCompleteProjectTask={completeProjectTask}
                 onCreateDreamProject={createDreamProject}
+                onSaveStorybookReflection={saveStorybookReflection}
                 onNavigate={navigate}
               />
             )}
@@ -1477,7 +1682,11 @@ function App() {
               />
             )}
             {activeTab === 'FutureSelf' && (
-              <FutureSelfPage user={user} onNavigate={navigate} />
+              <FutureSelfPage
+                user={user}
+                onSaveStorybookReflection={saveStorybookReflection}
+                onNavigate={navigate}
+              />
             )}
             {activeTab === 'Avatar' && (
               <AvatarPage
@@ -2011,6 +2220,7 @@ function CreatorStudioPage({
   onCompleteFocusSession,
   onCompleteProjectTask,
   onCreateDreamProject,
+  onSaveStorybookReflection,
   onNavigate,
 }: {
   user: DreamUser
@@ -2031,6 +2241,12 @@ function CreatorStudioPage({
     milestoneTitle: string
     taskTitle: string
     worldImpact: string
+  }) => void
+  onSaveStorybookReflection: (input: {
+    wentWell: string
+    challenged: string
+    proudOf: string
+    next: string
   }) => void
   onNavigate: (tab: Tab) => void
 }) {
@@ -2175,7 +2391,10 @@ function CreatorStudioPage({
       />
 
       <CreatorQuestlinePanel user={user} />
-      <CreatorStorybook user={user} />
+      <CreatorStorybook
+        user={user}
+        onSaveStorybookReflection={onSaveStorybookReflection}
+      />
       <CreatorAchievementWall user={user} />
 
       <button
@@ -2522,22 +2741,167 @@ function CreatorQuestlinePanel({ user }: { user: DreamUser }) {
   )
 }
 
-function CreatorStorybook({ user }: { user: DreamUser }) {
+function CreatorStorybook({
+  user,
+  onSaveStorybookReflection,
+}: {
+  user: DreamUser
+  onSaveStorybookReflection: (input: {
+    wentWell: string
+    challenged: string
+    proudOf: string
+    next: string
+  }) => void
+}) {
+  const [reflectionDraft, setReflectionDraft] = useState({
+    wentWell: '',
+    challenged: '',
+    proudOf: '',
+    next: '',
+  })
+  const sortedChapters = [...user.storybookChapters].sort(
+    (a, b) => a.chapterNumber - b.chapterNumber,
+  )
+  const memories = user.dreamFrameMemories ?? []
+
+  function updateReflectionDraft(
+    field: keyof typeof reflectionDraft,
+    value: string,
+  ) {
+    setReflectionDraft((draft) => ({ ...draft, [field]: value }))
+  }
+
+  function saveReflection() {
+    onSaveStorybookReflection(reflectionDraft)
+    setReflectionDraft({
+      wentWell: '',
+      challenged: '',
+      proudOf: '',
+      next: '',
+    })
+  }
+
   return (
-    <section className="creator-section" aria-label="Creator storybook">
+    <section className="creator-section storybook-system" aria-label="DreamFrame Storybook">
       <div className="section-heading-row">
         <div>
           <p className="page-kicker">Storybook</p>
-          <h3>Collected chapters.</h3>
+          <h3>The story of progress.</h3>
         </div>
-        <span>Weekly creator story</span>
+        <span>DreamFrame Memory</span>
       </div>
-      <div className="storybook-grid">
-        {user.storybookChapters.map((chapter) => (
-          <article className="storybook-card" key={chapter.id}>
-            <span>Chapter {chapter.chapterNumber}</span>
-            <strong>{chapter.title}</strong>
-            <p>{chapter.body}</p>
+
+      <div className="storybook-reflection-card">
+        <div>
+          <span>Reflection Engine</span>
+          <strong>Turn this week into a chapter.</strong>
+        </div>
+        <div className="storybook-reflection-grid">
+          <label>
+            What went well?
+            <textarea
+              onChange={(event) => updateReflectionDraft('wentWell', event.target.value)}
+              value={reflectionDraft.wentWell}
+            />
+          </label>
+          <label>
+            What challenged you?
+            <textarea
+              onChange={(event) => updateReflectionDraft('challenged', event.target.value)}
+              value={reflectionDraft.challenged}
+            />
+          </label>
+          <label>
+            What are you proud of?
+            <textarea
+              onChange={(event) => updateReflectionDraft('proudOf', event.target.value)}
+              value={reflectionDraft.proudOf}
+            />
+          </label>
+          <label>
+            What's next?
+            <textarea
+              onChange={(event) => updateReflectionDraft('next', event.target.value)}
+              value={reflectionDraft.next}
+            />
+          </label>
+        </div>
+        <button
+          className="glow-button compact-action"
+          onClick={saveReflection}
+          type="button"
+        >
+          <span className="material-symbols-outlined">auto_stories</span>
+          Save Weekly Chapter
+        </button>
+      </div>
+
+      <div className="storybook-memory-grid">
+        {memories.map((memory) => (
+          <article className="memory-card" key={memory.id}>
+            <span>{memory.label}</span>
+            <strong>{memory.value}</strong>
+          </article>
+        ))}
+      </div>
+
+      <div className="storybook-timeline">
+        {sortedChapters.map((chapter) => (
+          <article className="storybook-card timeline-chapter" key={chapter.id}>
+            <div className="chapter-marker">
+              <span>{chapter.weekLabel ?? `Week ${chapter.chapterNumber}`}</span>
+              <strong>Chapter {chapter.chapterNumber}</strong>
+            </div>
+            <div className="chapter-body">
+              <span>{(chapter.triggerType ?? 'milestone').replaceAll('_', ' ')}</span>
+              <strong>{chapter.title}</strong>
+              <p>{chapter.subtitle ?? 'A new piece of the journey appeared.'}</p>
+              <p>{chapter.body}</p>
+              {(chapter.highlights ?? []).length > 0 && (
+                <ul className="chapter-highlights">
+                  {(chapter.highlights ?? []).map((highlight) => (
+                    <li key={highlight}>{highlight}</li>
+                  ))}
+                </ul>
+              )}
+              {Object.values(
+                chapter.reflections ?? {
+                  wentWell: '',
+                  challenged: '',
+                  proudOf: '',
+                  next: '',
+                },
+              ).some(Boolean) && (
+                <dl className="chapter-reflections">
+                  <div>
+                    <dt>Went Well</dt>
+                    <dd>{chapter.reflections?.wentWell || 'Still becoming clear.'}</dd>
+                  </div>
+                  <div>
+                    <dt>Challenged</dt>
+                    <dd>{chapter.reflections?.challenged || 'Not named yet.'}</dd>
+                  </div>
+                  <div>
+                    <dt>Proud Of</dt>
+                    <dd>{chapter.reflections?.proudOf || 'The proof is still forming.'}</dd>
+                  </div>
+                  <div>
+                    <dt>Next</dt>
+                    <dd>{chapter.reflections?.next || 'The next chapter is open.'}</dd>
+                  </div>
+                </dl>
+              )}
+              {(chapter.comicPanels ?? []).length > 0 && (
+                <div className="comic-panel-row" aria-label="Comic mode preview">
+                  {(chapter.comicPanels ?? []).map((panel) => (
+                    <div className="comic-panel-card" key={panel.id}>
+                      <span>{panel.title}</span>
+                      <p>{panel.description}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </article>
         ))}
       </div>
@@ -3006,9 +3370,16 @@ function AvatarVisual({
 
 function FutureSelfPage({
   user,
+  onSaveStorybookReflection,
   onNavigate,
 }: {
   user: DreamUser
+  onSaveStorybookReflection: (input: {
+    wentWell: string
+    challenged: string
+    proudOf: string
+    next: string
+  }) => void
   onNavigate: (tab: Tab) => void
 }) {
   const completedProjectTasks = countProjectTasks(user)
@@ -3075,7 +3446,10 @@ function FutureSelfPage({
         </motion.article>
       </div>
 
-      <CreatorStorybook user={user} />
+      <CreatorStorybook
+        user={user}
+        onSaveStorybookReflection={onSaveStorybookReflection}
+      />
 
       <ProgressTimeline currentLevel={user.worldLevel} />
 
