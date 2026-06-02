@@ -1,6 +1,10 @@
 export type WorldEvent = {
   id: string
-  type: 'upgrade_unlocked' | 'companion_message' | 'daily_check_in'
+  type:
+    | 'upgrade_unlocked'
+    | 'companion_message'
+    | 'daily_check_in'
+    | 'future_self_visit'
   title: string
   message: string
   affectedLocation?: string
@@ -91,6 +95,7 @@ export type CreatorProjectTask = {
   xpReward: number
   createdAt: string
   completedAt?: string
+  completedHour?: number
 }
 
 export type CreatorProjectMilestone = {
@@ -169,8 +174,14 @@ export type DreamFrameMemory = {
 
 export type CreatorAchievement = {
   id: string
+  tier: 'beginning' | 'momentum' | 'identity' | 'growth' | 'legendary' | 'hidden'
   title: string
   description: string
+  trigger: string
+  reward: string
+  studioUnlock: string
+  xpReward: number
+  hidden?: boolean
   unlocked: boolean
   unlockedAt?: string
 }

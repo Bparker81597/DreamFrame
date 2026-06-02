@@ -32,7 +32,12 @@ import type {
   HabitLog,
 } from './models/dreamUser'
 import { createStarterWorldUser } from './models/createStarterWorld'
-import { checkFirstUpgrade, getLevel, xpRewards } from './models/progression'
+import {
+  checkFirstUpgrade,
+  getLevel,
+  recalculateLevels,
+  xpRewards,
+} from './models/progression'
 import { loadDreamUser, saveDreamUser } from './storage/dreamUserStorage'
 import './App.css'
 
@@ -450,6 +455,35 @@ function getMilestonesCompleted(milestones: CreatorProjectMilestone[]) {
   return milestones.filter((milestone) => milestone.completed).length
 }
 
+function getCompletedProjectTasks(user: DreamUser) {
+  return user.creatorProjects.flatMap((project) =>
+    getProjectMilestones(project).flatMap((milestone) =>
+      milestone.tasks.filter((task) => task.completed),
+    ),
+  )
+}
+
+function countCompletedProjects(user: DreamUser) {
+  return user.creatorProjects.filter((project) => getProjectProgress(project) >= 100)
+    .length
+}
+
+function countTasksByHour(user: DreamUser, predicate: (hour: number) => boolean) {
+  return getCompletedProjectTasks(user).filter(
+    (task) =>
+      typeof task.completedHour === 'number' && predicate(task.completedHour),
+  ).length
+}
+
+function hasProjectOverProgress(
+  user: DreamUser,
+  predicate: (project: DreamUser['creatorProjects'][number]) => boolean,
+) {
+  return user.creatorProjects.some(
+    (project) => predicate(project) && getProjectProgress(project) >= 50,
+  )
+}
+
 function addCreatorCompanionMessage(message: string) {
   return {
     id: `msg_creator_${Date.now()}`,
@@ -534,6 +568,88 @@ function createStorybookChapter(input: {
   }
 }
 
+function getAchievementStoryTitle(achievementId: string) {
+  const titles: Record<string, string> = {
+    momentum_found: 'The Spark Became A Flame',
+    creator_of_worlds: 'The World Builder',
+    becoming: 'Becoming',
+    legacy_builder: 'Legacy Builder',
+  }
+
+  return titles[achievementId]
+}
+
+function shouldUnlockAchievement(
+  achievementId: string,
+  user: DreamUser,
+  context: {
+    projectMilestones: number
+    completedTasks: number
+    completedProjects: number
+    journalEntries: number
+    activeProjects: number
+    lateNightTasks: number
+    sunriseTasks: number
+    tiredTaskCompleted: boolean
+  },
+) {
+  const firstStudioUpgradeUnlocked = user.currentWorld.studioLevel >= 2
+
+  switch (achievementId) {
+    case 'the_beginning':
+      return user.onboardingComplete
+    case 'first_dream':
+      return user.creatorProjects.length >= 1
+    case 'first_step_taken':
+      return context.completedTasks >= 1
+    case 'future_self_contact':
+      return user.worldEvents.some((event) => event.type === 'future_self_visit')
+    case 'spark_keeper':
+      return user.bestDailyStreak >= 3
+    case 'builder_mode':
+      return context.completedTasks >= 10
+    case 'momentum_found':
+      return context.projectMilestones >= 1
+    case 'journal_keeper':
+      return context.journalEntries >= 5
+    case 'app_builder':
+      return hasProjectOverProgress(user, (project) =>
+        /app|dreamframe|software|code|web|site/i.test(project.title),
+      )
+    case 'storyteller':
+      return context.journalEntries >= 20
+    case 'artist_in_motion':
+      return hasProjectOverProgress(user, (project) =>
+        /art|music|song|portfolio|design|creative|nova/i.test(project.title),
+      )
+    case 'dream_architect':
+      return context.activeProjects >= 3
+    case 'creator_of_worlds':
+      return context.completedProjects >= 1
+    case 'faithful_builder':
+      return user.bestDailyStreak >= 30
+    case 'quiet_confidence':
+      return user.creatorLevel >= 10
+    case 'legacy_builder':
+      return context.completedProjects >= 5
+    case 'becoming':
+      return (
+        context.completedProjects >= 1 &&
+        context.journalEntries >= 10 &&
+        context.completedTasks >= 30 &&
+        firstStudioUpgradeUnlocked
+      )
+    case 'late_night_builder':
+      return context.lateNightTasks >= 10
+    case 'sunrise_creator':
+      return context.sunriseTasks >= 10
+    case 'one_more_thing':
+      return context.tiredTaskCompleted
+    default:
+      return false
+  }
+}
+
 function upsertMemory(
   memories: DreamFrameMemory[],
   memory: DreamFrameMemory,
@@ -566,6 +682,15 @@ function refreshCreatorEraProgress(user: DreamUser): DreamUser {
   const journalEntries = nextUser.journalEntries.length
   const projectWorkDays = countProjectWorkDays(nextUser)
   const projectMilestones = countProjectMilestones(nextUser)
+  const completedTasks = getCompletedProjectTasks(nextUser).length
+  const completedProjects = countCompletedProjects(nextUser)
+  const activeProjects = nextUser.creatorProjects.filter(
+    (project) => project.status !== 'launched',
+  ).length
+  const lateNightTasks = countTasksByHour(nextUser, (hour) => hour >= 22)
+  const sunriseTasks = countTasksByHour(nextUser, (hour) => hour < 7)
+  const tiredTaskCompleted =
+    nextUser.avatar.mood === 'tired' && completedTasks > 0
 
   const questChecks = {
     creator_spark:
@@ -599,23 +724,6 @@ function refreshCreatorEraProgress(user: DreamUser): DreamUser {
     nextStudioLevel = Math.max(nextStudioLevel, 5)
   }
 
-  const creatorAchievements = nextUser.creatorAchievements.map((achievement) => {
-    const shouldUnlock =
-      (achievement.id === 'first_spark' && questChecks.creator_spark) ||
-      (achievement.id === 'project_builder' && projectWorkDays >= 3) ||
-      (achievement.id === 'seven_day_builder' && nextUser.bestDailyStreak >= 7)
-
-    if (!shouldUnlock || achievement.unlocked) {
-      return achievement
-    }
-
-    return {
-      ...achievement,
-      unlocked: true,
-      unlockedAt: new Date().toISOString(),
-    }
-  })
-
   const existingChapterCount = nextUser.storybookChapters.length
   const shouldAddMomentumChapter =
     questChecks.momentum &&
@@ -638,6 +746,79 @@ function refreshCreatorEraProgress(user: DreamUser): DreamUser {
         ...nextUser.storybookChapters,
       ]
     : nextUser.storybookChapters
+
+  let achievementXPReward = 0
+  let achievementStorybookChapters = nextStorybookChapters
+  let achievementMemories = nextUser.dreamFrameMemories
+  const newlyUnlockedAchievements: string[] = []
+  const achievementContext = {
+    projectMilestones,
+    completedTasks,
+    completedProjects,
+    journalEntries,
+    activeProjects,
+    lateNightTasks,
+    sunriseTasks,
+    tiredTaskCompleted,
+  }
+
+  const creatorAchievements = nextUser.creatorAchievements.map((achievement) => {
+    if (
+      achievement.unlocked ||
+      !shouldUnlockAchievement(achievement.id, nextUser, achievementContext)
+    ) {
+      return achievement
+    }
+
+    achievementXPReward += achievement.xpReward
+    newlyUnlockedAchievements.push(achievement.title)
+    nextStudioLevel = Math.max(
+      nextStudioLevel,
+      achievement.tier === 'legendary'
+        ? 5
+        : achievement.tier === 'identity'
+          ? 4
+          : achievement.tier === 'momentum'
+            ? 3
+            : 2,
+    )
+    achievementMemories = upsertMemory(achievementMemories, {
+      id: `memory_achievement_${achievement.id}`,
+      type: 'biggest_win',
+      label: 'Achievement Unlocked',
+      value: achievement.title,
+      sourceId: achievement.id,
+      createdAt: new Date().toISOString(),
+    })
+
+    const storyTitle = getAchievementStoryTitle(achievement.id)
+
+    if (storyTitle) {
+      achievementStorybookChapters = [
+        createStorybookChapter({
+          chapterNumber: achievementStorybookChapters.length + 1,
+          weekLabel: `Week ${achievementStorybookChapters.length + 1}`,
+          title: storyTitle,
+          subtitle: achievement.reward,
+          body: `${nextUser.displayName} unlocked "${achievement.title}". The studio changed because the progress was no longer abstract; it became evidence of identity.`,
+          triggerType:
+            achievement.tier === 'momentum' ? 'momentum' : 'milestone',
+          highlights: [
+            achievement.title,
+            achievement.studioUnlock,
+            achievement.reward,
+          ],
+        }),
+        ...achievementStorybookChapters,
+      ]
+    }
+
+    return {
+      ...achievement,
+      unlocked: true,
+      unlockedAt: new Date().toISOString(),
+    }
+  })
   const nextAvatarLevel = Math.min(
     5,
     Math.max(nextUser.avatar.level, nextUser.creatorLevel, nextStudioLevel),
@@ -647,11 +828,34 @@ function refreshCreatorEraProgress(user: DreamUser): DreamUser {
     new Set([...nextUser.avatar.unlockedItems, ...nextAvatarConfig.unlocks]),
   )
 
-  return {
+  return recalculateLevels({
     ...nextUser,
+    creatorXP: nextUser.creatorXP + achievementXPReward,
     creatorQuestlines,
     creatorAchievements,
-    storybookChapters: nextStorybookChapters,
+    storybookChapters: achievementStorybookChapters,
+    dreamFrameMemories: achievementMemories,
+    progressHistory:
+      newlyUnlockedAchievements.length > 0
+        ? [
+            addProgressEntry(
+              'Achievement unlocked',
+              newlyUnlockedAchievements.join(' / '),
+              achievementXPReward,
+              'the Creator Studio changes to match who you are becoming',
+            ),
+            ...nextUser.progressHistory,
+          ]
+        : nextUser.progressHistory,
+    companionMessages:
+      newlyUnlockedAchievements.length > 0
+        ? [
+            addCreatorCompanionMessage(
+              `${newlyUnlockedAchievements[0]} unlocked. This is evidence, not just progress.`,
+            ),
+            ...nextUser.companionMessages,
+          ]
+        : nextUser.companionMessages,
     avatar: {
       ...nextUser.avatar,
       level: nextAvatarLevel,
@@ -668,7 +872,7 @@ function refreshCreatorEraProgress(user: DreamUser): DreamUser {
       studioLevel: nextStudioLevel,
       visualState: `studio_level_${nextStudioLevel}`,
     },
-  }
+  })
 }
 
 function getTodayKey() {
@@ -1349,6 +1553,7 @@ function App() {
               ...task,
               completed: true,
               completedAt: now,
+              completedHour: new Date(now).getHours(),
             }
           })
           const shouldCompleteMilestone =
@@ -1572,6 +1777,30 @@ function App() {
     setActiveTab(tab)
     window.history.pushState({}, '', getPathForTab(tab))
     window.scrollTo({ top: 0, behavior: 'smooth' })
+
+    if (tab === 'FutureSelf') {
+      updateUser((currentUser) => {
+        if (currentUser.worldEvents.some((item) => item.type === 'future_self_visit')) {
+          return currentUser
+        }
+
+        return {
+          ...currentUser,
+          worldEvents: [
+            {
+              id: `event_future_${Date.now()}`,
+              type: 'future_self_visit',
+              title: 'Future Self Observatory Visited',
+              message: 'Your future self noticed you looking forward.',
+              affectedLocation: 'future_self_observatory',
+              seenByUser: false,
+              createdAt: new Date().toISOString(),
+            },
+            ...currentUser.worldEvents,
+          ],
+        }
+      })
+    }
   }
 
   function createStarterWorld() {
@@ -1584,8 +1813,10 @@ function App() {
       futureSelfVision: user.futureSelfVision,
     })
 
-    saveDreamUser(starterUser)
-    setUser(starterUser)
+    const nextUser = refreshCreatorEraProgress(starterUser)
+
+    saveDreamUser(nextUser)
+    setUser(nextUser)
     setRitualPulse(true)
     window.setTimeout(() => setRitualPulse(false), 900)
     navigate('Home')
@@ -2910,22 +3141,42 @@ function CreatorStorybook({
 }
 
 function CreatorAchievementWall({ user }: { user: DreamUser }) {
+  const visibleAchievements = user.creatorAchievements.filter(
+    (achievement) => !achievement.hidden || achievement.unlocked,
+  )
+
   return (
     <section className="creator-section" aria-label="Creator achievements">
       <div className="section-heading-row">
         <div>
-          <p className="page-kicker">Milestones</p>
-          <h3>Achievement wall.</h3>
+          <p className="page-kicker">Identity Achievements</p>
+          <h3>Evidence of becoming.</h3>
         </div>
+        <span>Badge / Studio / Storybook</span>
       </div>
       <div className="achievement-grid">
-        {user.creatorAchievements.map((achievement) => (
+        {visibleAchievements.map((achievement) => (
           <article className={achievement.unlocked ? 'achievement-card unlocked' : 'achievement-card'} key={achievement.id}>
             <span className="material-symbols-outlined">
               {achievement.unlocked ? 'workspace_premium' : 'lock'}
             </span>
+            <small>{achievement.tier}</small>
             <strong>{achievement.title}</strong>
             <p>{achievement.description}</p>
+            <dl>
+              <div>
+                <dt>Trigger</dt>
+                <dd>{achievement.trigger}</dd>
+              </div>
+              <div>
+                <dt>World Impact</dt>
+                <dd>{achievement.studioUnlock}</dd>
+              </div>
+              <div>
+                <dt>Reward</dt>
+                <dd>{achievement.reward}</dd>
+              </div>
+            </dl>
           </article>
         ))}
       </div>

@@ -1,5 +1,6 @@
 import { initialUser } from '../data/initialUser'
 import type {
+  CreatorAchievement,
   CreatorProject,
   DreamFrameMemory,
   DreamUser,
@@ -62,6 +63,18 @@ function normalizeDreamFrameMemories(memories?: DreamFrameMemory[]) {
   return memories ?? initialUser.dreamFrameMemories
 }
 
+function normalizeCreatorAchievements(achievements?: CreatorAchievement[]) {
+  return initialUser.creatorAchievements.map((achievement) => {
+    const savedAchievement = achievements?.find((item) => item.id === achievement.id)
+
+    return {
+      ...achievement,
+      unlocked: savedAchievement?.unlocked ?? achievement.unlocked,
+      unlockedAt: savedAchievement?.unlockedAt ?? achievement.unlockedAt,
+    }
+  })
+}
+
 export function loadDreamUser() {
   const storedUser = window.localStorage.getItem(dreamUserStorageKey)
 
@@ -98,7 +111,7 @@ export function loadDreamUser() {
       dreamFrameMemories:
         normalizeDreamFrameMemories(parsedUser.dreamFrameMemories),
       creatorAchievements:
-        parsedUser.creatorAchievements ?? initialUser.creatorAchievements,
+        normalizeCreatorAchievements(parsedUser.creatorAchievements),
       avatar: {
         ...initialUser.avatar,
         ...parsedUser.avatar,

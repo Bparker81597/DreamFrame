@@ -2122,6 +2122,45 @@
   padding: 20px;
 }
 
+.achievement-card small {
+  width: fit-content;
+  border-radius: 999px;
+  padding: 6px 9px;
+  color: #245c58;
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background: rgba(137, 205, 194, 0.28);
+}
+
+.achievement-card dl {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+
+.achievement-card dt {
+  color: rgba(73, 68, 84, 0.62);
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.achievement-card dd {
+  margin: 2px 0 0;
+  color: #1c1c19;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.achievement-card.unlocked {
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.76), rgba(222, 247, 235, 0.5)),
+    rgba(255, 255, 255, 0.5);
+}
+
 .achievement-card .material-symbols-outlined {
   display: grid;
   place-items: center;
