@@ -434,6 +434,7 @@
 .ritual-response-card,
 .share-progress-card,
 .progress-history-card,
+.orientation-card,
 .beta-panel,
 .beta-error-card,
 .companion-guide {
@@ -450,6 +451,80 @@
   width: min(100%, 860px);
   margin: 0 auto 22px;
   padding: 28px;
+}
+
+.orientation-card {
+  display: grid;
+  gap: 18px;
+  width: min(100%, 980px);
+  margin: 0 auto 22px;
+  padding: 26px;
+}
+
+.orientation-path-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.orientation-step {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  min-height: 190px;
+  border: 1px solid rgba(107, 56, 212, 0.14);
+  border-radius: 22px;
+  padding: 18px;
+  color: #494454;
+  text-align: left;
+  font: inherit;
+  background: rgba(255, 255, 255, 0.58);
+  cursor: pointer;
+  transition:
+    background 220ms ease,
+    transform 220ms ease;
+}
+
+.orientation-step:hover {
+  background: rgba(255, 255, 255, 0.78);
+  transform: translateY(-3px);
+}
+
+.orientation-step .material-symbols-outlined {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 999px;
+  color: #fff;
+  background: #245c58;
+}
+
+.orientation-step small {
+  color: rgba(73, 68, 84, 0.68);
+  font-size: 0.76rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.orientation-step strong {
+  color: #6b38d4;
+  font-family: 'EB Garamond', Georgia, serif;
+  font-size: 1.55rem;
+  font-weight: 500;
+}
+
+.orientation-step p {
+  margin: 0;
+  line-height: 1.35;
+}
+
+.orientation-step em {
+  align-self: end;
+  color: #245c58;
+  font-style: normal;
+  font-weight: 900;
 }
 
 .daily-check-card.complete {
@@ -3497,6 +3572,7 @@
   .habit-grid,
   .xp-grid,
   .daily-action-options,
+  .orientation-path-grid,
   .project-grid,
   .dream-project-system .project-grid,
   .project-form-grid,
@@ -3555,6 +3631,7 @@
   .daily-response-grid,
   .mood-options,
   .daily-action-options,
+  .orientation-path-grid,
   .progress-history-card li,
   .project-grid,
   .dream-project-system .project-grid,

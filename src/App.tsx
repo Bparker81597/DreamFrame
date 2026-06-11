@@ -130,6 +130,21 @@ const navItems: Array<[string, Tab]> = [
   ['person', 'Me'],
 ]
 
+const navLabels: Record<Tab, string> = {
+  Landing: 'Landing',
+  Start: 'Start',
+  Home: 'Home',
+  DreamFrame: 'Era',
+  World: 'World',
+  CreatorStudio: 'Studio',
+  GrowthGarden: 'Garden',
+  FutureSelf: 'Future',
+  Avatar: 'Avatar',
+  Companion: 'Guide',
+  Journal: 'Journal',
+  Me: 'Me',
+}
+
 const tabSlugs: Record<Tab, string> = {
   Landing: '',
   Start: 'start',
@@ -2035,7 +2050,9 @@ function App() {
         <button
           className="icon-button"
           onClick={() =>
-            activeTab === 'Landing' && navigate(user.onboardingComplete ? 'Home' : 'Start')
+            activeTab === 'Landing'
+              ? navigate(user.onboardingComplete ? 'Home' : 'Start')
+              : navigate('Me')
           }
           type="button"
           aria-label={activeTab === 'Landing' ? 'Open app' : 'Settings'}
@@ -2066,12 +2083,13 @@ function App() {
               />
             )}
             {activeTab === 'Start' && (
-              <StartPage user={user} onCreateStarterWorld={createStarterWorld} />
+              <StartPage onCreateStarterWorld={createStarterWorld} />
             )}
             {activeTab === 'Home' && (
               <HomePage
                 user={user}
                 onCompleteDailyCheckIn={completeDailyCheckIn}
+                onNavigate={navigate}
               />
             )}
             {activeTab === 'DreamFrame' && (
@@ -2169,7 +2187,7 @@ function App() {
               aria-current={label === activeTab ? 'page' : undefined}
             >
               <span className="material-symbols-outlined">{icon}</span>
-              <span>{label}</span>
+              <span>{navLabels[label]}</span>
             </a>
           ))}
         </nav>
@@ -2272,30 +2290,24 @@ function LandingPage({
   )
 }
 
-function StartPage({
-  user,
-  onCreateStarterWorld,
-}: {
-  user: DreamUser
-  onCreateStarterWorld: () => void
-}) {
+function StartPage({ onCreateStarterWorld }: { onCreateStarterWorld: () => void }) {
   return (
     <section className="page-view start-view">
       <div className="intro-panel">
         <p className="page-kicker">Starter World</p>
-        <h2>Create Creator Studio Level 1.</h2>
+        <h2>Open your first DreamFrame world.</h2>
         <p>
-          This generates the first user document, saves the starter world state,
-          and redirects into the Home hub.
+          Start with a simple Creator Studio, one daily ritual, and a clear
+          path for what to try first.
         </p>
       </div>
       <div className="starter-card">
-        <span>users/{user.uid}</span>
+        <span>Beta Start</span>
         <strong>Creator Studio Level 1</strong>
-        <p>starter_studio / Creator Era / 0 XP</p>
+        <p>Home check-in / Dream Projects / Storybook progress</p>
         <button className="glow-button" onClick={onCreateStarterWorld} type="button">
           <span className="material-symbols-outlined">auto_fix_high</span>
-          Generate Starter World
+          Enter DreamFrame
         </button>
       </div>
     </section>
@@ -2305,6 +2317,7 @@ function StartPage({
 function HomePage({
   user,
   onCompleteDailyCheckIn,
+  onNavigate,
 }: {
   user: DreamUser
   onCompleteDailyCheckIn: (input: {
@@ -2312,6 +2325,7 @@ function HomePage({
     intention: string
     actionType: DailyActionType
   }) => void
+  onNavigate: (tab: Tab) => void
 }) {
   const hour = new Date().getHours()
   const greeting =
@@ -2357,6 +2371,12 @@ function HomePage({
         todaysCheckIn={todaysCheckIn}
         onCompleteDailyCheckIn={onCompleteDailyCheckIn}
       />
+      <HomeOrientationCard
+        hasCheckedIn={Boolean(todaysCheckIn)}
+        onNavigate={onNavigate}
+        projectCount={user.creatorProjects.length}
+        storyCount={user.storybookChapters.length}
+      />
       <section className="daily-response-grid">
         <article className="ritual-response-card">
           <span>Current Streak</span>
@@ -2369,6 +2389,79 @@ function HomePage({
           <p>{latestProgress?.detail ?? 'Complete a ritual to change the world.'}</p>
         </article>
       </section>
+    </section>
+  )
+}
+
+function HomeOrientationCard({
+  hasCheckedIn,
+  onNavigate,
+  projectCount,
+  storyCount,
+}: {
+  hasCheckedIn: boolean
+  onNavigate: (tab: Tab) => void
+  projectCount: number
+  storyCount: number
+}) {
+  const pathItems: Array<{
+    icon: string
+    title: string
+    body: string
+    action: string
+    tab: Tab
+    status: string
+  }> = [
+    {
+      icon: hasCheckedIn ? 'verified' : 'radio_button_unchecked',
+      title: 'Check In',
+      body: hasCheckedIn
+        ? 'Your world already received today’s signal.'
+        : 'Start with how you are really showing up.',
+      action: 'Stay on Home',
+      tab: 'Home',
+      status: hasCheckedIn ? 'Complete' : 'Start here',
+    },
+    {
+      icon: 'construction',
+      title: 'Build',
+      body: `${projectCount} Dream Projects are connected to Creator XP and Studio growth.`,
+      action: 'Open Studio',
+      tab: 'CreatorStudio',
+      status: 'Core loop',
+    },
+    {
+      icon: 'auto_stories',
+      title: 'Remember',
+      body: `${storyCount} Storybook chapters turn progress into proof.`,
+      action: 'View Future Self',
+      tab: 'FutureSelf',
+      status: 'Reflect',
+    },
+  ]
+
+  return (
+    <section className="orientation-card" aria-label="DreamFrame orientation">
+      <div className="ritual-card-heading">
+        <span>Today’s Path</span>
+        <strong>Check in, build one thing, then notice what changed.</strong>
+      </div>
+      <div className="orientation-path-grid">
+        {pathItems.map((item) => (
+          <button
+            className="orientation-step"
+            key={item.title}
+            onClick={() => onNavigate(item.tab)}
+            type="button"
+          >
+            <span className="material-symbols-outlined">{item.icon}</span>
+            <small>{item.status}</small>
+            <strong>{item.title}</strong>
+            <p>{item.body}</p>
+            <em>{item.action}</em>
+          </button>
+        ))}
+      </div>
     </section>
   )
 }
